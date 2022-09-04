@@ -38,6 +38,8 @@
 (define-constant type-order-fok u1)
 (define-constant type-order-ioc u2)
 
+(define-data-var sender-fee-id uint u1)
+
 (define-data-var contract-owner principal tx-sender)
 (define-map authorised-senders principal bool)
 
@@ -128,6 +130,17 @@
 		) 
 	))
 	(ok (map cancel-order-iter cancel-order-list))
+)
+
+(define-public (set-sender-fee-id (asset-id uint))
+	(begin 
+		(try! (is-contract-owner))
+		(ok (var-set sender-fee-id asset-id))
+	)
+)
+
+(define-read-only (get-sender-fee-id)
+	(var-get sender-fee-id)
 )
 
 ;; #[allow(unchecked_data)]
@@ -463,7 +476,7 @@
 		(as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer amount (get maker order) taker (get maker-asset order)) err-asset-contract-call-failed))
 		(and
 			(> (get sender-fee order) u0)
-			(as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer (get sender-fee order) (get maker order) (get sender order) u1) err-sender-fee-payment-failed))
+			(as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer (get sender-fee order) (get maker order) (get sender order) (var-get sender-fee-id)) err-sender-fee-payment-failed))
 		)
 		(ok true)
 	)
