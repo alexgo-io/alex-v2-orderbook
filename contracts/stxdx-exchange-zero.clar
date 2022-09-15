@@ -351,19 +351,13 @@
 		;; so that maker gives at most maker-asset-data, and taker takes at least taker-asset-data
 		(asserts! 
 			(or 
-				(and ;; both maker and taker are vanilla limit orders
+				(and
 					(is-eq (get maker-asset-data left-order) (get taker-asset-data right-order))
-					(is-eq (get taker-asset-data left-order) (get maker-asset-data right-order))				
+					(<= (get taker-asset-data left-order) (get maker-asset-data right-order))				
 				)				
-				(and ;; taker (right-order) is a market-limit buyer (has to be either FOK or IOC)
-					(is-eq (get maker-asset-data left-order) (get taker-asset-data right-order))
-					(< (get taker-asset-data left-order) (get maker-asset-data right-order))
-					(or (is-eq (get type right-order) type-order-fok) (is-eq (get type right-order) type-order-ioc))
-				)
-				(and ;; taker (right-order) is a market-limit seller (has to be either FOK or IOC)
+				(and
 					(is-eq (get taker-asset-data left-order) (get maker-asset-data right-order))
-					(> (get maker-asset-data left-order) (get taker-asset-data right-order))
-					(or (is-eq (get type right-order) type-order-fok) (is-eq (get type right-order) type-order-ioc))
+					(>= (get maker-asset-data left-order) (get taker-asset-data right-order))
 				)
 			)
 			err-asset-data-mismatch
@@ -381,10 +375,7 @@
 				(asserts! (is-trusted-oracle signer) err-untrusted-oracle)
 				(asserts! (<= (get timestamp left-order) (get timestamp oracle-data)) err-invalid-timestamp)				
 				(if (get risk left-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-					(begin
-						(asserts! (if is-buy (>= (get value oracle-data) (get stop left-order)) (<= (get value oracle-data) (get stop left-order))) err-stop-not-triggered)
-						(asserts! (or (is-eq (get type left-order) type-order-fok) (is-eq (get type left-order) type-order-ioc)) err-invalid-order-type)
-					)
+					(asserts! (if is-buy (>= (get value oracle-data) (get stop left-order)) (<= (get value oracle-data) (get stop left-order))) err-stop-not-triggered)
 					(asserts! (if is-buy (< (get value oracle-data) (get stop left-order)) (> (get value oracle-data) (get stop left-order))) err-stop-not-triggered)
 				)				
 			)
@@ -401,10 +392,7 @@
 				(asserts! (is-trusted-oracle signer) err-untrusted-oracle)
 				(asserts! (<= (get timestamp right-order) (get timestamp oracle-data)) err-invalid-timestamp)				
 				(if (get risk right-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-					(begin
-						(asserts! (if is-buy (>= (get value oracle-data) (get stop right-order)) (<= (get value oracle-data) (get stop right-order))) err-stop-not-triggered)
-						(asserts! (or (is-eq (get type right-order) type-order-fok) (is-eq (get type right-order) type-order-ioc)) err-invalid-order-type)
-					)
+					(asserts! (if is-buy (>= (get value oracle-data) (get stop right-order)) (<= (get value oracle-data) (get stop right-order))) err-stop-not-triggered)
 					(asserts! (if is-buy (< (get value oracle-data) (get stop right-order)) (> (get value oracle-data) (get stop right-order))) err-stop-not-triggered)
 				)				
 			)
