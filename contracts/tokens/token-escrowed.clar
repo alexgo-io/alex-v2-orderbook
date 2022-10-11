@@ -357,31 +357,87 @@
 	(var-get vepower-emission-per-height)
 )
 
-(define-map lockers 
-	principal
-	{
-		locked-in-fixed: uint,
-		base-height-in-fixed: uint
-	}
-)
-(define-data-var total-locked uint u0)
 
-(define-public (lock (amount uint))
-	;; lock escrow token and update base-height
-	;; also lock nToken by ratio
-	(ok true)
+;; locking
+
+(define-map lockers
+    principal
+    {
+        locked-in-fixed: uint,
+        base-height-in-fixed: uint
+    }
+)
+(define-data-var total-locked-in-fixed uint u0)
+(define-data-var conversion-per-height uint u0)
+
+(define-read-only (get-locker-or-default (address principal))
+	(default-to 
+		{ locked-in-fixed: u0, base-height-in-fixed: (- (* block-height ONE_8) ONE_8) }
+		(map-get? lockers address)
+	)
 )
 
-(define-public (unlock (amount uint))
-	;; unlock escrow token and unlock nToken by ratio
-	;; no change to base-height
-	(ok true)
+(define-public (lock (amount-in-fixed uint))
+	(let 
+		( 
+			(staker (get-staker-or-default tx-sender))
+			(updated-base 
+				(div-down
+					(+ (mul-down amount-in-fixed (* block-height ONE_8)) (mul-down (get staked-in-fixed staker) (get base-height-in-fixed staker)))
+					(+ amount-in-fixed (get staked-in-fixed staker))
+				)
+			)
+			(updated-staked (+ (get staked-in-fixed staker) amount-in-fixed))			
+		)
+		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
+		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
+		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })
+		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
+		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
+	)
 )
 
-(define-public (convert)
-	;; TODO: how to apply threshold
-	(ok true)
+(define-public (unstake (amount-in-fixed uint))
+	(let 
+		(
+			(staker (get-staker-or-default tx-sender))
+		) 
+		(asserts! (>= (get staked-in-fixed staker) amount-in-fixed) ERR-INVALID-AMOUNT)
+		(try! (claim))
+		(map-set stakers 
+			tx-sender
+			{
+				staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed),
+				base-height-in-fixed: (get base-height-in-fixed staker)
+			}
+		)
+		(var-set total-staked-in-fixed (- (var-get total-staked-in-fixed) amount-in-fixed))
+		(ok { staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed staker) })
+	)
 )
+
+;; claim accrued rewards from, and including, base-height-in-fixed to, but excluding, current block-height
+(define-public (claim)
+	(let 
+		(
+			(staker (get-staker-or-default tx-sender))
+			(mint-basis (mul-down (get staked-in-fixed staker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed staker))))
+			(rewards-to-mint (mul-down mint-basis (var-get rewards-emission-per-height)))
+			(vepower-to-mint (mul-down mint-basis (var-get vepower-emission-per-height)))
+		)
+		(and (> rewards-to-mint u0) (as-contract (try! (mint-fixed rewards-to-mint tx-sender))))
+		(and (> vepower-to-mint u0) (as-contract (try! (contract-call? .token-vepower mint-fixed vepower-to-mint tx-sender))))
+		(map-set stakers 
+			tx-sender
+			{
+				staked-in-fixed: (get staked-in-fixed staker),
+				base-height-in-fixed: (* block-height ONE_8)
+			}
+		)
+		(ok { rewards: rewards-to-mint, vepower: vepower-to-mint }) 
+	)
+)
+
 
 (define-private (mul-down (a uint) (b uint))
     (/ (* a b) ONE_8)
