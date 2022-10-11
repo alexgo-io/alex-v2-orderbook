@@ -4,17 +4,17 @@
 (define-constant ERR-NOT-AUTHORIZED (err u1000))
 (define-constant ERR-TRANSFER-FAILED (err u1001))
 
-(define-fungible-token native-token)
+(define-fungible-token escrowed-token)
 
 (define-data-var contract-owner principal tx-sender)
 (define-map approved-contracts principal bool)
 
-(define-data-var token-name (string-ascii 32) "native-token")
-(define-data-var token-symbol (string-ascii 10) "nToken")
-(define-data-var token-uri (optional (string-utf8 256)) (some u"https://cdn.alexlab.co/metadata/native-token.json"))
+(define-data-var token-name (string-ascii 32) "escrowed-token")
+(define-data-var token-symbol (string-ascii 10) "sToken")
+(define-data-var token-uri (optional (string-utf8 256)) (some u"https://cdn.alexlab.co/metadata/escrowed-token.json"))
 
 (define-data-var token-decimals uint u8)
-(define-data-var transferrable bool true)
+(define-data-var transferrable bool false)
 
 (define-read-only (get-transferrable)
 	(ok (var-get transferrable))
@@ -100,7 +100,7 @@
     (begin
         (asserts! (var-get transferrable) ERR-TRANSFER-FAILED)
         (asserts! (is-eq sender tx-sender) ERR-NOT-AUTHORIZED)        
-        (try! (ft-transfer? native-token amount sender recipient))
+        (try! (ft-transfer? escrowed-token amount sender recipient))
         (match memo to-print (print to-print) 0x)
         (ok true)
     )
@@ -119,11 +119,11 @@
 )
 
 (define-read-only (get-balance (who principal))
-	(ok (ft-get-balance native-token who))
+	(ok (ft-get-balance escrowed-token who))
 )
 
 (define-read-only (get-total-supply)
-	(ok (ft-get-supply native-token))
+	(ok (ft-get-supply escrowed-token))
 )
 
 (define-read-only (get-token-uri)
@@ -143,7 +143,7 @@
 (define-public (mint (amount uint) (recipient principal))
 	(begin		
 		(asserts! (or (is-ok (check-is-approved)) (is-ok (check-is-owner))) ERR-NOT-AUTHORIZED)
-		(ft-mint? native-token amount recipient)
+		(ft-mint? escrowed-token amount recipient)
 	)
 )
 
@@ -156,7 +156,7 @@
 (define-public (burn (amount uint) (sender principal))
 	(begin
 		(asserts! (or (is-ok (check-is-approved)) (is-ok (check-is-owner))) ERR-NOT-AUTHORIZED)
-		(ft-burn? native-token amount sender)
+		(ft-burn? escrowed-token amount sender)
 	)
 )
 
@@ -246,68 +246,13 @@
     principal
     {
         staked-in-fixed: uint,
-        base-height-in-fixed: uint,
-		locked-in-fixed: uint
+        base-height-in-fixed: uint
     }
 )
 (define-data-var rewards-emission-per-height uint u0)
 (define-data-var vepower-emission-per-height uint u0)
 (define-data-var activation-height uint MAX_UINT)
 (define-data-var total-staked-in-fixed uint u0)
-(define-data-var total-locked-in-fixed uint u0)
-
-(define-map approved-lockers principal bool)
-
-(define-public (set-approved-locker (address principal) (approved bool))
-	(begin 
-		(try! (check-is-owner))
-		(ok (map-set approved-lockers address approved))
-	)
-)
-
-(define-private (check-is-approved-locker)
-  (ok (asserts! (default-to false (map-get? approved-lockers tx-sender)) ERR-NOT-AUTHORIZED))
-)
-
-(define-public (lock-staked (address principal) (amount uint))
-	(let 
-		(
-			(staker (get-staker-or-default address))
-		) 
-		(try! (check-is-approved-locker))
-		(asserts! (>= amount (- (get staked-in-fixed staker) (get locked-in-fixed staker))) ERR-INVALID-AMOUNT)
-		(map-set stakers 
-			address
-			{
-				staked-in-fixed: (get staked-in-fixed staker),
-				base-height-in-fixed: (get base-height-in-fixed staker),
-				locked-in-fixed: (+ (get locked-in-fixed staker) amount)
-			}
-		)
-		(var-set total-locked (+ (var-get total-locked) amount))
-		(ok (+ (get locked-in-fixed staker) amount))
-	)
-)
-
-(define-public (unlock-staked (address principal) (amount uint))
-	(let 
-		(
-			(staker (get-staker-or-default address))
-		) 
-		(try! (check-is-approved-locker))
-		(asserts! (<= amount (get locked-in-fixed staker)) ERR-INVALID-AMOUNT)
-		(map-set stakers 
-			address
-			{
-				staked-in-fixed: (get staked-in-fixed staker),
-				base-height-in-fixed: (get base-height-in-fixed staker),
-				locked-in-fixed: (- (get locked-in-fixed staker) amount)
-			}
-		)
-		(var-set total-locked (- (var-get total-locked) amount))
-		(ok (- (get locked-in-fixed staker) amount))
-	)
-)
 
 (define-public (set-activation-height (height uint))
 	(begin 
@@ -322,7 +267,7 @@
 
 (define-read-only (get-staker-or-default (address principal))
 	(default-to 
-		{ staked-in-fixed: u0, base-height-in-fixed: (- (* block-height ONE_8) ONE_8), locked-in-fixed: u0 }
+		{ staked-in-fixed: u0, base-height-in-fixed: (- (* block-height ONE_8) ONE_8) }
 		(map-get? stakers address)
 	)
 )
@@ -341,7 +286,7 @@
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base, locked-in-fixed: (get locked-in-fixed staker) })
+		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })
 		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
 		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
 	)
@@ -352,11 +297,17 @@
 		(
 			(staker (get-staker-or-default tx-sender))
 		) 
-		(asserts! (>= (- (get staked-in-fixed staker) (get locked-in-fixed staker)) amount-in-fixed) ERR-INVALID-AMOUNT)
+		(asserts! (>= (get staked-in-fixed staker) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(try! (claim))
-		(map-set stakers tx-sender { staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed staker), locked-in-fixed: (get locked-in-fixed staker) })
+		(map-set stakers 
+			tx-sender
+			{
+				staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed),
+				base-height-in-fixed: (get base-height-in-fixed staker)
+			}
+		)
 		(var-set total-staked-in-fixed (- (var-get total-staked-in-fixed) amount-in-fixed))
-		(ok (- (get staked-in-fixed staker) amount-in-fixed))
+		(ok { staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed staker) })
 	)
 )
 
@@ -371,7 +322,13 @@
 		)
 		(and (> rewards-to-mint u0) (as-contract (try! (mint-fixed rewards-to-mint tx-sender))))
 		(and (> vepower-to-mint u0) (as-contract (try! (contract-call? .token-vepower mint-fixed vepower-to-mint tx-sender))))
-		(map-set stakers tx-sender { staked-in-fixed: (get staked-in-fixed staker), base-height-in-fixed: (* block-height ONE_8), locked-in-fixed: (get locked-in-fixed staker) })
+		(map-set stakers 
+			tx-sender
+			{
+				staked-in-fixed: (get staked-in-fixed staker),
+				base-height-in-fixed: (* block-height ONE_8)
+			}
+		)
 		(ok { rewards: rewards-to-mint, vepower: vepower-to-mint }) 
 	)
 )
@@ -398,6 +355,32 @@
 
 (define-read-only (get-vepower-emission-per-height)
 	(var-get vepower-emission-per-height)
+)
+
+(define-map lockers 
+	principal
+	{
+		locked-in-fixed: uint,
+		base-height-in-fixed: uint
+	}
+)
+(define-data-var total-locked uint u0)
+
+(define-public (lock (amount uint))
+	;; lock escrow token and update base-height
+	;; also lock nToken by ratio
+	(ok true)
+)
+
+(define-public (unlock (amount uint))
+	;; unlock escrow token and unlock nToken by ratio
+	;; no change to base-height
+	(ok true)
+)
+
+(define-public (convert)
+	;; TODO: how to apply threshold
+	(ok true)
 )
 
 (define-private (mul-down (a uint) (b uint))
