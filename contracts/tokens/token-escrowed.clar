@@ -380,17 +380,22 @@
 (define-public (lock (amount-in-fixed uint))
 	(let 
 		( 
-			(staker (get-staker-or-default tx-sender))
+			(locker (get-locker-or-default tx-sender))
+			(native-staker (contract-call? .token-native get-staker-or-default tx-sender))
 			(updated-base 
 				(div-down
-					(+ (mul-down amount-in-fixed (* block-height ONE_8)) (mul-down (get staked-in-fixed staker) (get base-height-in-fixed staker)))
-					(+ amount-in-fixed (get staked-in-fixed staker))
+					(+ (mul-down amount-in-fixed (* block-height ONE_8)) (mul-down (get locked-in-fixed locker) (get base-height-in-fixed locker)))
+					(+ amount-in-fixed (get locked-in-fixed locker))
 				)
 			)
-			(updated-staked (+ (get staked-in-fixed staker) amount-in-fixed))			
+			(updated-locked (+ (get locked-in-fixed locker) amount-in-fixed))			
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
+		(asserts! 
+			(>= (get locked-in-fixed native-staker) updated-locked) 
+			(contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker)))
+		)
 		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })
 		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
 		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
