@@ -427,11 +427,10 @@
 	(let 
 		(
 			(locker (get-locker-or-default tx-sender))
-			(convert-basis (mul-down (get locked-in-fixed locker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed locker))))
-			(rewards-to-mint (mul-down mint-basis (var-get rewards-emission-per-height)))
-			(vepower-to-mint (mul-down mint-basis (var-get vepower-emission-per-height)))
+			(to-convert (mul-down (var-get conversion-per-height) (mul-down (get locked-in-fixed locker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed locker)))))
 		)
-		(and (> rewards-to-mint u0) (as-contract (try! (mint-fixed rewards-to-mint tx-sender))))
+		()
+		(and (> to-convert u0) (as-contract (try! (-fixed rewards-to-mint tx-sender))))
 		(and (> vepower-to-mint u0) (as-contract (try! (contract-call? .token-vepower mint-fixed vepower-to-mint tx-sender))))
 		(map-set stakers 
 			tx-sender
