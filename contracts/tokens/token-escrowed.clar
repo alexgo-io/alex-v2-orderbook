@@ -294,10 +294,10 @@
 (define-public (unstake (amount-in-fixed uint))
 	(let 
 		(
-			(staker (get-staker-or-default tx-sender))
+			(staker (try! (claim)))
 		) 
 		(asserts! (>= (get staked-in-fixed staker) amount-in-fixed) ERR-INVALID-AMOUNT)
-		(try! (claim))
+		
 		(map-set stakers 
 			tx-sender
 			{
@@ -328,7 +328,7 @@
 				base-height-in-fixed: (* block-height ONE_8)
 			}
 		)
-		(ok { rewards: rewards-to-mint, vepower: vepower-to-mint }) 
+		(ok { staked-in-fixed: (get staked-in-fixed staker), base-height-in-fixed: (* block-height ONE_8), rewards: rewards-to-mint, vepower: vepower-to-mint }) 
 	)
 )
 
@@ -403,13 +403,13 @@
 (define-public (unlock (amount-in-fixed uint))
 	(let 
 		(
-			(locker (get-locker-or-default tx-sender))
+			(sender tx-sender)
+			(locker (try! (convert)))
 		) 
 		(asserts! (>= (get locked-in-fixed locker) amount-in-fixed) ERR-INVALID-AMOUNT)
-		(try! (claim))
-		(as-contract (try! (contract-call? .token-native unlock-staked tx-sender amount-in-fixed)))		
+		(as-contract (try! (contract-call? .token-native unlock-staked sender amount-in-fixed)))		
 		(map-set lockers 
-			tx-sender
+			sender
 			{
 				locked-in-fixed: (- (get locked-in-fixed locker) amount-in-fixed),
 				base-height-in-fixed: (get base-height-in-fixed locker)
@@ -431,13 +431,13 @@
 		(and (> to-convert u0) (as-contract (try! (burn-fixed to-convert sender))))
 		(and (> to-convert u0) (as-contract (try! (contract-call? .token-native mint-fixed to-convert sender))))		
 		(map-set lockers 
-			tx-sender
+			sender
 			{
 				locked-in-fixed: (get locked-in-fixed locker),
 				base-height-in-fixed: (* block-height ONE_8)
 			}
 		)
-		(ok to-convert) 
+		(ok { locked-in-fixed: (get locked-in-fixed locker), base-height-in-fixed: (* block-height ONE_8), converted: to-convert }) 
 	)
 )
 

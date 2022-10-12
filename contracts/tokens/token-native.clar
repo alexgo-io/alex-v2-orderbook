@@ -340,7 +340,14 @@
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base, locked-in-fixed: (get locked-in-fixed staker) })
+		(map-set stakers 
+			tx-sender 
+			{ 
+				staked-in-fixed: updated-staked, 
+				base-height-in-fixed: updated-base, 
+				locked-in-fixed: (get locked-in-fixed staker) 
+			}
+		)
 		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
 		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
 	)
@@ -349,11 +356,17 @@
 (define-public (unstake (amount-in-fixed uint))
 	(let 
 		(
-			(staker (get-staker-or-default tx-sender))
+			(staker (try! (claim)))
 		) 
-		(asserts! (>= (- (get staked-in-fixed staker) (get locked-in-fixed staker)) amount-in-fixed) ERR-INVALID-AMOUNT)
-		(try! (claim))
-		(map-set stakers tx-sender { staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed staker), locked-in-fixed: (get locked-in-fixed staker) })
+		(asserts! (>= (- (get staked-in-fixed staker) (get locked-in-fixed staker)) amount-in-fixed) ERR-INVALID-AMOUNT)		
+		(map-set stakers 
+			tx-sender 
+			{ 
+				staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), 
+				base-height-in-fixed: (get base-height-in-fixed staker), 
+				locked-in-fixed: (get locked-in-fixed staker) 
+			}
+		)
 		(var-set total-staked-in-fixed (- (var-get total-staked-in-fixed) amount-in-fixed))
 		(ok (- (get staked-in-fixed staker) amount-in-fixed))
 	)
@@ -370,8 +383,15 @@
 		)
 		(and (> rewards-to-mint u0) (as-contract (try! (mint-fixed rewards-to-mint tx-sender))))
 		(and (> vepower-to-mint u0) (as-contract (try! (contract-call? .token-vepower mint-fixed vepower-to-mint tx-sender))))
-		(map-set stakers tx-sender { staked-in-fixed: (get staked-in-fixed staker), base-height-in-fixed: (* block-height ONE_8), locked-in-fixed: (get locked-in-fixed staker) })
-		(ok { rewards: rewards-to-mint, vepower: vepower-to-mint }) 
+		(map-set stakers 
+			tx-sender 
+			{ 
+				staked-in-fixed: (get staked-in-fixed staker), 
+				base-height-in-fixed: (* block-height ONE_8), 
+				locked-in-fixed: (get locked-in-fixed staker) 
+			}
+		)
+		(ok { staked-in-fixed: (get staked-in-fixed staker), base-height-in-fixed: (* block-height ONE_8), locked-in-fixed: (get locked-in-fixed staker), rewards: rewards-to-mint, vepower: vepower-to-mint }) 
 	)
 )
 
