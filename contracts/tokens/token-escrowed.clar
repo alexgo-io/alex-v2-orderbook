@@ -238,7 +238,6 @@
 
 (define-constant ERR-INVALID-AMOUNT (err u2000))
 (define-constant ERR-STAKING-NOT-ACTIVATED (err u2001))
-(define-constant ERR-NO-STAKING-POSITION (err u3001))
 
 (define-constant MAX_UINT u340282366920938463463374607431768211455)
 
@@ -380,23 +379,22 @@
 (define-public (lock (amount-in-fixed uint))
 	(let 
 		( 
-			(locker (get-locker-or-default tx-sender))
-			(native-staker (contract-call? .token-native get-staker-or-default tx-sender))
+			(sender tx-sender)
+			(locker (get-locker-or-default sender))
+			(native-staker (contract-call? .token-native get-staker-or-default sender))
 			(updated-base 
 				(div-down
 					(+ (mul-down amount-in-fixed (* block-height ONE_8)) (mul-down (get locked-in-fixed locker) (get base-height-in-fixed locker)))
 					(+ amount-in-fixed (get locked-in-fixed locker))
 				)
 			)
-			(updated-locked (+ (get locked-in-fixed locker) amount-in-fixed))			
+			(updated-locked (+ (get locked-in-fixed locker) amount-in-fixed))
+			(native-to-lock (if (< updated-locked (get locked-in-fixed native-staker)) u0 (- updated-locked (get locked-in-fixed native-staker))))			
 		)
-		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
+		(asserts! (>= (unwrap-panic (get-balance-fixed sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(if (< (get locked-in-fixed native-staker) updated-locked) 
-			(try! (as-contract (contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker)))))
-			true
-		)
-		(map-set lockers tx-sender { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })
+		(try! (as-contract (contract-call? .token-native lock-staked sender native-to-lock)))
+		(map-set lockers sender { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })
 		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount-in-fixed))
 		(ok { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })	
 	)

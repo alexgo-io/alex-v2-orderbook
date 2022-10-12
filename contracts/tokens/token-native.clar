@@ -238,7 +238,6 @@
 
 (define-constant ERR-INVALID-AMOUNT (err u2000))
 (define-constant ERR-STAKING-NOT-ACTIVATED (err u2001))
-(define-constant ERR-NO-STAKING-POSITION (err u3001))
 
 (define-constant MAX_UINT u340282366920938463463374607431768211455)
 
@@ -275,7 +274,7 @@
 			(staker (get-staker-or-default address))
 		) 
 		(try! (check-is-approved-locker))
-		(asserts! (>= amount-in-fixed (- (get staked-in-fixed staker) (get locked-in-fixed staker))) ERR-INVALID-AMOUNT)
+		(asserts! (<= amount-in-fixed (- (get staked-in-fixed staker) (get locked-in-fixed staker))) ERR-INVALID-AMOUNT)
 		(map-set stakers 
 			address
 			{
