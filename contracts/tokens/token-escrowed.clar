@@ -392,9 +392,9 @@
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(asserts! 
-			(>= (get locked-in-fixed native-staker) updated-locked) 
-			(as-contract (contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker))))
+		(if (< (get locked-in-fixed native-staker) updated-locked) 
+			(try! (as-contract (contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker)))))
+			true
 		)
 		(map-set lockers tx-sender { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })
 		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount-in-fixed))
@@ -409,7 +409,7 @@
 		) 
 		(asserts! (>= (get locked-in-fixed locker) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(try! (claim))
-		(as-contract (try! (contract-call? .token-native unlock-staked tx-sender amount-in-fixed)))
+		(as-contract (try! (contract-call? .token-native unlock-staked tx-sender amount-in-fixed)))		
 		(map-set lockers 
 			tx-sender
 			{
@@ -423,23 +423,23 @@
 )
 
 ;; claim accrued rewards from, and including, base-height-in-fixed to, but excluding, current block-height
-(define-public (claim)
+(define-public (convert)
 	(let 
 		(
-			(locker (get-locker-or-default tx-sender))
+			(sender tx-sender)
+			(locker (get-locker-or-default sender))
 			(to-convert (mul-down (var-get conversion-per-height) (mul-down (get locked-in-fixed locker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed locker)))))
 		)
-		()
-		(and (> to-convert u0) (as-contract (try! (-fixed rewards-to-mint tx-sender))))
-		(and (> vepower-to-mint u0) (as-contract (try! (contract-call? .token-vepower mint-fixed vepower-to-mint tx-sender))))
-		(map-set stakers 
+		(and (> to-convert u0) (as-contract (try! (burn-fixed to-convert sender))))
+		(and (> to-convert u0) (as-contract (try! (contract-call? .token-native mint-fixed to-convert sender))))		
+		(map-set lockers 
 			tx-sender
 			{
-				staked-in-fixed: (get staked-in-fixed staker),
+				locked-in-fixed: (get locked-in-fixed locker),
 				base-height-in-fixed: (* block-height ONE_8)
 			}
 		)
-		(ok { rewards: rewards-to-mint, vepower: vepower-to-mint }) 
+		(ok to-convert) 
 	)
 )
 

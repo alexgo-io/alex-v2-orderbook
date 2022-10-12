@@ -269,43 +269,43 @@
   (ok (asserts! (default-to false (map-get? approved-lockers tx-sender)) ERR-NOT-AUTHORIZED))
 )
 
-(define-public (lock-staked (address principal) (amount uint))
+(define-public (lock-staked (address principal) (amount-in-fixed uint))
 	(let 
 		(
 			(staker (get-staker-or-default address))
 		) 
 		(try! (check-is-approved-locker))
-		(asserts! (>= amount (- (get staked-in-fixed staker) (get locked-in-fixed staker))) ERR-INVALID-AMOUNT)
+		(asserts! (>= amount-in-fixed (- (get staked-in-fixed staker) (get locked-in-fixed staker))) ERR-INVALID-AMOUNT)
 		(map-set stakers 
 			address
 			{
 				staked-in-fixed: (get staked-in-fixed staker),
 				base-height-in-fixed: (get base-height-in-fixed staker),
-				locked-in-fixed: (+ (get locked-in-fixed staker) amount)
+				locked-in-fixed: (+ (get locked-in-fixed staker) amount-in-fixed)
 			}
 		)
-		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount))
-		(ok (+ (get locked-in-fixed staker) amount))
+		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount-in-fixed))
+		(ok (+ (get locked-in-fixed staker) amount-in-fixed))
 	)
 )
 
-(define-public (unlock-staked (address principal) (amount uint))
+(define-public (unlock-staked (address principal) (amount-in-fixed uint))
 	(let 
 		(
 			(staker (get-staker-or-default address))
 		) 
 		(try! (check-is-approved-locker))
-		(asserts! (<= amount (get locked-in-fixed staker)) ERR-INVALID-AMOUNT)
+		(asserts! (<= amount-in-fixed (get locked-in-fixed staker)) ERR-INVALID-AMOUNT)
 		(map-set stakers 
 			address
 			{
 				staked-in-fixed: (get staked-in-fixed staker),
 				base-height-in-fixed: (get base-height-in-fixed staker),
-				locked-in-fixed: (- (get locked-in-fixed staker) amount)
+				locked-in-fixed: (- (get locked-in-fixed staker) amount-in-fixed)
 			}
 		)
-		(var-set total-locked (- (var-get total-locked) amount))
-		(ok (- (get locked-in-fixed staker) amount))
+		(var-set total-locked-in-fixed (- (var-get total-locked-in-fixed) amount-in-fixed))
+		(ok (- (get locked-in-fixed staker) amount-in-fixed))
 	)
 )
 
