@@ -284,7 +284,7 @@
 				locked-in-fixed: (+ (get locked-in-fixed staker) amount)
 			}
 		)
-		(var-set total-locked (+ (var-get total-locked) amount))
+		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount))
 		(ok (+ (get locked-in-fixed staker) amount))
 	)
 )

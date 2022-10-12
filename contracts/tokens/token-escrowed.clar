@@ -394,30 +394,31 @@
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
 		(asserts! 
 			(>= (get locked-in-fixed native-staker) updated-locked) 
-			(contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker)))
+			(as-contract (contract-call? .token-native lock-staked tx-sender (- updated-locked (get locked-in-fixed native-staker))))
 		)
-		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })
-		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
-		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
+		(map-set lockers tx-sender { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })
+		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount-in-fixed))
+		(ok { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })	
 	)
 )
 
-(define-public (unstake (amount-in-fixed uint))
+(define-public (unlock (amount-in-fixed uint))
 	(let 
 		(
-			(staker (get-staker-or-default tx-sender))
+			(locker (get-locker-or-default tx-sender))
 		) 
-		(asserts! (>= (get staked-in-fixed staker) amount-in-fixed) ERR-INVALID-AMOUNT)
+		(asserts! (>= (get locked-in-fixed locker) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(try! (claim))
-		(map-set stakers 
+		(as-contract (try! (contract-call? .token-native unlock-staked tx-sender amount-in-fixed)))
+		(map-set lockers 
 			tx-sender
 			{
-				staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed),
-				base-height-in-fixed: (get base-height-in-fixed staker)
+				locked-in-fixed: (- (get locked-in-fixed locker) amount-in-fixed),
+				base-height-in-fixed: (get base-height-in-fixed locker)
 			}
 		)
-		(var-set total-staked-in-fixed (- (var-get total-staked-in-fixed) amount-in-fixed))
-		(ok { staked-in-fixed: (- (get staked-in-fixed staker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed staker) })
+		(var-set total-locked-in-fixed (- (var-get total-locked-in-fixed) amount-in-fixed))
+		(ok { locked-in-fixed: (- (get locked-in-fixed locker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed locker) })
 	)
 )
 
@@ -425,8 +426,8 @@
 (define-public (claim)
 	(let 
 		(
-			(staker (get-staker-or-default tx-sender))
-			(mint-basis (mul-down (get staked-in-fixed staker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed staker))))
+			(locker (get-locker-or-default tx-sender))
+			(convert-basis (mul-down (get locked-in-fixed locker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed locker))))
 			(rewards-to-mint (mul-down mint-basis (var-get rewards-emission-per-height)))
 			(vepower-to-mint (mul-down mint-basis (var-get vepower-emission-per-height)))
 		)

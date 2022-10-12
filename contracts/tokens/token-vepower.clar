@@ -1,3 +1,5 @@
+;; TODO: to move to ExecutorDAO
+
 (impl-trait .trait-ownable.ownable-trait)
 (impl-trait .trait-sip-010.sip-010-trait)
 
