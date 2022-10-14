@@ -8,6 +8,10 @@ requirements = []
 [repl]
 costs_version = 2
 
+[contracts.escrowed-vesting]
+path = "contracts/helpers/escrowed-vesting.clar"
+depends_on = [ "token-native", "token-escrowed" ]
+
 [contracts.token-vepower]
 path = "contracts/tokens/token-vepower.clar"
 depends_on = [ "trait-ownable", "trait-sip-010" ]
@@ -18,7 +22,7 @@ depends_on = [ "trait-ownable", "trait-sip-010" ]
 
 [contracts.token-native]
 path = "contracts/tokens/token-native.clar"
-depends_on = [ "trait-ownable", "trait-sip-010", "token-vepower", "token-escrowed" ]
+depends_on = [ "trait-ownable", "trait-sip-010" ]
 
 [contracts.redstone-verify]
 path = "contracts/redstone-verify.clar"
