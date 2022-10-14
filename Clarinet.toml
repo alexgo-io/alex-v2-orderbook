@@ -14,11 +14,11 @@ depends_on = [ "trait-ownable", "trait-sip-010" ]
 
 [contracts.token-escrowed]
 path = "contracts/tokens/token-escrowed.clar"
-depends_on = [ "trait-ownable", "trait-sip-010", "token-native" ]
+depends_on = [ "trait-ownable", "trait-sip-010" ]
 
 [contracts.token-native]
 path = "contracts/tokens/token-native.clar"
-depends_on = [ "trait-ownable", "trait-sip-010", "token-vepower" ]
+depends_on = [ "trait-ownable", "trait-sip-010", "token-vepower", "token-escrowed" ]
 
 [contracts.redstone-verify]
 path = "contracts/redstone-verify.clar"

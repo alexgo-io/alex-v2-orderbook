@@ -285,6 +285,7 @@
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
+		(unwrap-panic (update-escrowed-to-convert tx-sender))		
 		(map-set stakers tx-sender { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })
 		(var-set total-staked-in-fixed (+ (var-get total-staked-in-fixed) amount-in-fixed))
 		(ok { staked-in-fixed: updated-staked, base-height-in-fixed: updated-base })	
@@ -297,7 +298,7 @@
 			(staker (try! (claim)))
 		) 
 		(asserts! (>= (get staked-in-fixed staker) amount-in-fixed) ERR-INVALID-AMOUNT)
-		
+		(unwrap-panic (update-escrowed-to-convert tx-sender))
 		(map-set stakers 
 			tx-sender
 			{
@@ -354,103 +355,6 @@
 
 (define-read-only (get-vepower-emission-per-height)
 	(var-get vepower-emission-per-height)
-)
-
-
-;; locking
-
-(define-map lockers
-    principal
-    {
-        locked-in-fixed: uint,
-        base-height-in-fixed: uint
-    }
-)
-(define-data-var total-locked-in-fixed uint u0)
-(define-data-var conversion-per-height uint u0)
-
-(define-read-only (get-locker-or-default (address principal))
-	(default-to 
-		{ locked-in-fixed: u0, base-height-in-fixed: (- (* block-height ONE_8) ONE_8) }
-		(map-get? lockers address)
-	)
-)
-
-(define-public (lock (amount-in-fixed uint))
-	(let 
-		( 
-			(sender tx-sender)
-			(locker (get-locker-or-default sender))
-			(native-staker (contract-call? .token-native get-staker-or-default sender))
-			(updated-base 
-				(div-down
-					(+ (mul-down amount-in-fixed (* block-height ONE_8)) (mul-down (get locked-in-fixed locker) (get base-height-in-fixed locker)))
-					(+ amount-in-fixed (get locked-in-fixed locker))
-				)
-			)
-			(updated-locked (+ (get locked-in-fixed locker) amount-in-fixed))
-			(native-to-lock (if (< updated-locked (get locked-in-fixed native-staker)) u0 (- updated-locked (get locked-in-fixed native-staker))))			
-		)
-		(asserts! (>= (unwrap-panic (get-balance-fixed sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
-		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(try! (as-contract (contract-call? .token-native lock-staked sender native-to-lock)))
-		(map-set lockers sender { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })
-		(var-set total-locked-in-fixed (+ (var-get total-locked-in-fixed) amount-in-fixed))
-		(ok { locked-in-fixed: updated-locked, base-height-in-fixed: updated-base })	
-	)
-)
-
-(define-public (unlock (amount-in-fixed uint))
-	(let 
-		(
-			(sender tx-sender)
-			(locker (try! (convert)))
-		) 
-		(asserts! (>= (get locked-in-fixed locker) amount-in-fixed) ERR-INVALID-AMOUNT)
-		(as-contract (try! (contract-call? .token-native unlock-staked sender amount-in-fixed)))		
-		(map-set lockers 
-			sender
-			{
-				locked-in-fixed: (- (get locked-in-fixed locker) amount-in-fixed),
-				base-height-in-fixed: (get base-height-in-fixed locker)
-			}
-		)
-		(var-set total-locked-in-fixed (- (var-get total-locked-in-fixed) amount-in-fixed))
-		(ok { locked-in-fixed: (- (get locked-in-fixed locker) amount-in-fixed), base-height-in-fixed: (get base-height-in-fixed locker) })
-	)
-)
-
-;; claim accrued rewards from, and including, base-height-in-fixed to, but excluding, current block-height
-(define-public (convert)
-	(let 
-		(
-			(sender tx-sender)
-			(locker (get-locker-or-default sender))
-			(to-convert (mul-down (var-get conversion-per-height) (mul-down (get locked-in-fixed locker) (- (* block-height ONE_8) ONE_8 (get base-height-in-fixed locker)))))
-		)
-		(and (> to-convert u0) (as-contract (try! (burn-fixed to-convert sender))))
-		(and (> to-convert u0) (as-contract (try! (contract-call? .token-native mint-fixed to-convert sender))))		
-		(map-set lockers 
-			sender
-			{
-				locked-in-fixed: (get locked-in-fixed locker),
-				base-height-in-fixed: (* block-height ONE_8)
-			}
-		)
-		(ok { locked-in-fixed: (get locked-in-fixed locker), base-height-in-fixed: (* block-height ONE_8), converted: to-convert }) 
-	)
-)
-
-
-(define-private (mul-down (a uint) (b uint))
-    (/ (* a b) ONE_8)
-)
-
-(define-private (div-down (a uint) (b uint))
-  (if (is-eq a u0)
-    u0
-    (/ (* a ONE_8) b)
-  )
 )
 
 ;; contract initialisation
