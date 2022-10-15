@@ -287,7 +287,7 @@
 		)
 		(asserts! (>= (unwrap-panic (get-balance-fixed tx-sender)) amount-in-fixed) ERR-INVALID-AMOUNT)
 		(asserts! (> block-height (var-get activation-height)) ERR-STAKING-NOT-ACTIVATED)
-		(unwrap-panic (contract-call? .escrowed-vesting update-escrowed-to-convert tx-sender))
+		(unwrap-panic (contract-call? .token-escrowed update-escrowed-to-convert tx-sender (get staked-in-fixed staker)))
 		(map-set stakers 
 			tx-sender 
 			{ 
@@ -306,7 +306,7 @@
 			(staker (unwrap-panic (update-claimable tx-sender)))
 		) 
 		(asserts! (>= (- (get staked-in-fixed staker) (get locked-in-fixed staker)) amount-in-fixed) ERR-INVALID-AMOUNT)			
-		(unwrap-panic (contract-call? .token-escrowed update-escrowed-to-convert tx-sender))
+		(unwrap-panic (contract-call? .token-escrowed update-escrowed-to-convert tx-sender (get staked-in-fixed staker)))
 		(map-set stakers 
 			tx-sender 
 			{ 
