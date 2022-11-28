@@ -4,8 +4,8 @@ import {
   Clarinet,
   Tx,
   types,
-} from 'https://deno.land/x/clarinet@v0.31.1/index.ts';
-export { assertEquals } from 'https://deno.land/std@0.113.0/testing/asserts.ts';
+} from 'https://deno.land/x/clarinet@v1.1.0/index.ts';
+export { assertEquals } from 'https://deno.land/std@0.166.0/testing/asserts.ts';
 export { Clarinet, Tx, Chain, types };
 export type { Account };
 export { contractNames };

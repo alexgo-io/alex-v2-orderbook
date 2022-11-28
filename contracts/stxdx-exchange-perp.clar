@@ -293,65 +293,71 @@
 		}
 	)
 	)
-	(sha256
-		(concat serialized-order-header
+  (let (
+    (b1
+      (concat serialized-order-header
 
-		(concat serialized-key-expiration-height
-		(concat (serialize-uint (get expiration-height order))
+      (concat serialized-key-expiration-height
+      (concat (serialize-uint (get expiration-height order))
 
-		(concat serialized-key-linked-hash
-		(concat (serialize-buff (get linked-hash order))
+      (concat serialized-key-linked-hash
+      (concat (serialize-buff (get linked-hash order))
 
-		(concat serialized-key-linked-maker-data
-		(concat (serialize-uint (get linked-maker-data order))
+      (concat serialized-key-linked-maker-data
+      (concat (serialize-uint (get linked-maker-data order))
 
-		(concat serialized-key-linked-stop
-		(concat (serialize-uint (get linked-stop order))		
+      (concat serialized-key-linked-stop
+      (concat (serialize-uint (get linked-stop order))		
 
-		(concat serialized-key-linked-taker-data
-		(concat (serialize-uint (get linked-taker-data order))		
+      (concat serialized-key-linked-taker-data
+      (concat (serialize-uint (get linked-taker-data order))		
 
-		(concat serialized-key-maker
-		(concat (serialize-uint (get maker order))
+      (concat serialized-key-maker
+      (concat (serialize-uint (get maker order))
 
-		(concat serialized-key-maker-asset
-		(concat (serialize-uint (get maker-asset order))
+      (concat serialized-key-maker-asset
+      (concat (serialize-uint (get maker-asset order))
 
-		(concat serialized-key-maker-asset-data
-		(concat (serialize-uint (get maker-asset-data order))
+      (concat serialized-key-maker-asset-data
+              (serialize-uint (get maker-asset-data order))
 
-		(concat serialized-key-maximum-fill
-		(concat (serialize-uint (get maximum-fill order))
+      )))))))))))))))))
+    (b2
+      (concat b1
+        (concat serialized-key-maximum-fill
+        (concat (serialize-uint (get maximum-fill order))
 
-		(concat serialized-key-risk
-		(concat (serialize-bool (get risk order))
+        (concat serialized-key-risk
+        (concat (serialize-bool (get risk order))
 
-		(concat serialized-key-salt
-		(concat (serialize-uint (get salt order))
+        (concat serialized-key-salt
+        (concat (serialize-uint (get salt order))
 
-		(concat serialized-key-sender
-		(concat (serialize-uint (get sender order))
+        (concat serialized-key-sender
+        (concat (serialize-uint (get sender order))
 
-		(concat serialized-key-sender-fee
-		(concat (serialize-uint (get sender-fee order))	
+        (concat serialized-key-sender-fee
+        (concat (serialize-uint (get sender-fee order))	
 
-		(concat serialized-key-stop 
-		(concat (serialize-uint (get stop order))
-		
-		(concat serialized-key-taker-asset
-		(concat (serialize-uint (get taker-asset order))
+        (concat serialized-key-stop 
+        (concat (serialize-uint (get stop order))
+        
+        (concat serialized-key-taker-asset
+        (concat (serialize-uint (get taker-asset order))
 
-		(concat serialized-key-taker-asset-data
-		(concat (serialize-uint (get taker-asset-data order))
+        (concat serialized-key-taker-asset-data
+        (concat (serialize-uint (get taker-asset-data order))
 
-		(concat serialized-key-timestamp
-		(concat (serialize-uint (get timestamp order))
+        (concat serialized-key-timestamp
+        (concat (serialize-uint (get timestamp order))
 
-		(concat serialized-key-type
-				(serialize-uint (get type order))
+        (concat serialized-key-type
+            (serialize-uint (get type order))
 
-		))))))))))))))))))))))))))))))))))))
-	)
+        ))))))))))))))))))))
+    ))
+    (sha256 b2)
+  )
 )
 
 (define-read-only (validate-match
