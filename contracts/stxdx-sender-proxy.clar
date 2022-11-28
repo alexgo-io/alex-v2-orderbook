@@ -85,16 +85,10 @@
 
 (define-public (match-perp-orders
 	(left-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}			
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }			
 	)
 	(right-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }
 	)
 	(left-signature (buff 65))
 	(right-signature (buff 65))
@@ -111,15 +105,9 @@
 	(matched-orders
 		{
 			left-order:
-			{
-				parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-				linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-			},
+			{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 			right-order:
-			{
-				parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-				linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-			},
+			{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 			left-signature: (buff 65),
 			right-signature: (buff 65),
 			left-oracle-data: (optional { timestamp: uint, value: uint, signature: (buff 65) }),
@@ -135,15 +123,9 @@
 		(list 200 
 			{
 				left-order:
-				{
-					parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-					linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-				},
+				{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 				right-order:
-				{
-					parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-					linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-				},
+				{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 				left-signature: (buff 65),
 				right-signature: (buff 65),
 				left-oracle-data: (optional { timestamp: uint, value: uint, signature: (buff 65) }),

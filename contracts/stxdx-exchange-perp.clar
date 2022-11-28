@@ -71,7 +71,6 @@
 		taker-asset: uint, 
 		maker-asset-data: uint, 
 		taker-asset-data: uint,
-		;; linked-hash: (buff 32),
 		margin-per-fill: uint
 	}
 )
@@ -132,7 +131,10 @@
 		stop: uint,
 		timestamp: uint,
 		type: uint,
-		linked-hash: (buff 32)
+		linked-hash: (buff 32),
+		linked-maker-data: uint,
+		linked-taker-data: uint,
+		linked-stop: uint		
 		}
 	)
 	(signature (buff 65)))
@@ -162,7 +164,7 @@
 (define-private (cancel-order-iter 
 	(one-cancel-order
 		{ 
-			order: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
+			order: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 			signature: (buff 65)
 		}
 	))
@@ -173,7 +175,7 @@
 	(cancel-order-list
 		(list 200
 			{ 
-				order: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
+				order: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint },
 				signature: (buff 65)
 			}		
 		) 
@@ -262,6 +264,9 @@
 (define-constant serialized-key-timestamp (serialize-tuple-key "timestamp"))
 (define-constant serialized-key-type (serialize-tuple-key "type"))
 (define-constant serialized-key-linked-hash (serialize-tuple-key "linked-hash"))
+(define-constant serialized-key-linked-maker-data (serialize-tuple-key "linked-maker-data"))
+(define-constant serialized-key-linked-taker-data (serialize-tuple-key "linked-taker-data"))
+(define-constant serialized-key-linked-stop (serialize-tuple-key "linked-stop"))
 (define-constant serialized-order-header (concat type-id-tuple (uint32-to-buff-be u15)))
 
 (define-read-only (hash-order 
@@ -281,7 +286,10 @@
 		stop: uint,
 		timestamp: uint,
 		type: uint,
-		linked-hash: (buff 32)
+		linked-hash: (buff 32),
+		linked-maker-data: uint,
+		linked-taker-data: uint,
+		linked-stop: uint
 		}
 	)
 	)
@@ -293,6 +301,15 @@
 
 		(concat serialized-key-linked-hash
 		(concat (serialize-buff (get linked-hash order))
+
+		(concat serialized-key-linked-maker-data
+		(concat (serialize-uint (get linked-maker-data order))
+
+		(concat serialized-key-linked-stop
+		(concat (serialize-uint (get linked-stop order))		
+
+		(concat serialized-key-linked-taker-data
+		(concat (serialize-uint (get linked-taker-data order))		
 
 		(concat serialized-key-maker
 		(concat (serialize-uint (get maker order))
@@ -333,22 +350,16 @@
 		(concat serialized-key-type
 				(serialize-uint (get type order))
 
-		))))))))))))))))))))))))))))))
+		))))))))))))))))))))))))))))))))))))
 	)
 )
 
 (define-read-only (validate-match
 	(left-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}			
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }			
 	)
 	(right-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }
 	)
 	(left-signature (buff 65))
 	(right-signature (buff 65))
@@ -358,22 +369,20 @@
 	)
 	(let
 		(		
-			(left-parent (get parent left-order))
-			(right-parent (get parent right-order))
-			(users (try! (contract-call? .stxdx-registry get-two-users-from-id-or-fail (get maker left-parent) (get maker right-parent))))
+			(users (try! (contract-call? .stxdx-registry get-two-users-from-id-or-fail (get maker left-order) (get maker right-order))))
 			(left-user (get user-1 users))
 			(right-user (get user-2 users))
-			(left-order-hash (hash-order left-parent))
-			(right-order-hash (hash-order right-parent))
+			(left-order-hash (hash-order left-order))
+			(right-order-hash (hash-order right-order))
 			(order-fills (contract-call? .stxdx-registry get-two-order-fills left-order-hash right-order-hash))
 			(left-order-fill (get order-1 order-fills))
 			(right-order-fill (get order-2 order-fills))
 			;; the linked order can be filled only up to the fill of the initiating order, 
 			;; which may be smaller than maximum-fill of the initiating order, or that of the linked order			
-			(left-linked-filled (if (is-some (map-get? positions (get linked-hash left-parent))) (contract-call? .stxdx-registry get-order-fill (get linked-hash left-parent)) u340282366920938463463374607431768211455))
-			(right-linked-filled (if (is-some (map-get? positions (get linked-hash right-parent))) (contract-call? .stxdx-registry get-order-fill (get linked-hash right-parent)) u340282366920938463463374607431768211455))
-			(fillable (min (- (min left-linked-filled (get maximum-fill left-parent)) left-order-fill) (- (min right-linked-filled (get maximum-fill right-parent)) right-order-fill)))		
-			(left-buy (is-some (map-get? oracle-symbols (get taker-asset left-parent))))
+			(left-linked-filled (if (is-some (map-get? positions (get linked-hash left-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash left-order)) u340282366920938463463374607431768211455))
+			(right-linked-filled (if (is-some (map-get? positions (get linked-hash right-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash right-order)) u340282366920938463463374607431768211455))
+			(fillable (min (- (min left-linked-filled (get maximum-fill left-order)) left-order-fill) (- (min right-linked-filled (get maximum-fill right-order)) right-order-fill)))		
+			(left-buy (is-some (map-get? oracle-symbols (get taker-asset left-order))))
 			(right-buy (not left-buy))
 		)
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -383,108 +392,108 @@
 		;; there are more fills to do
 		(match fill value (asserts! (>= fillable value) err-maximum-fill-reached) (asserts! (> fillable u0) err-maximum-fill-reached))					
 		;; both orders are not expired
-		(asserts! (< block-height (get expiration-height left-parent)) err-left-order-expired)
-		(asserts! (< block-height (get expiration-height right-parent)) err-right-order-expired)				
+		(asserts! (< block-height (get expiration-height left-order)) err-left-order-expired)
+		(asserts! (< block-height (get expiration-height right-order)) err-right-order-expired)				
 		;; assets to be exchanged match
-		(asserts! (is-eq (get maker-asset left-parent) (get taker-asset right-parent)) err-maker-asset-mismatch)
-		(asserts! (is-eq (get taker-asset left-parent) (get maker-asset right-parent)) err-taker-asset-mismatch)
+		(asserts! (is-eq (get maker-asset left-order) (get taker-asset right-order)) err-maker-asset-mismatch)
+		(asserts! (is-eq (get taker-asset left-order) (get maker-asset right-order)) err-taker-asset-mismatch)
 
 		;; one side matches and the taker of the other side is smaller than maker.
 		;; so that maker gives at most maker-asset-data, and taker takes at least taker-asset-data
 		(asserts! 
 			(or 			
 				(and
-					(is-eq (get maker-asset-data left-parent) (get taker-asset-data right-parent))
-					(<= (get taker-asset-data left-parent) (get maker-asset-data right-parent))
+					(is-eq (get maker-asset-data left-order) (get taker-asset-data right-order))
+					(<= (get taker-asset-data left-order) (get maker-asset-data right-order))
 			 	)
 				(and
-					(is-eq (get taker-asset-data left-parent) (get maker-asset-data right-parent))
-					(>= (get maker-asset-data left-parent) (get taker-asset-data right-parent))
+					(is-eq (get taker-asset-data left-order) (get maker-asset-data right-order))
+					(>= (get maker-asset-data left-order) (get taker-asset-data right-order))
 				)
 			)
 			err-asset-data-mismatch
 		)
 		;; stop limit order
-		(if (and (or (is-order-triggered left-order-hash) (is-eq (get stop left-parent) u0)) (or (is-order-triggered right-order-hash) (is-eq (get stop right-parent) u0)))
+		(if (and (or (is-order-triggered left-order-hash) (is-eq (get stop left-order) u0)) (or (is-order-triggered right-order-hash) (is-eq (get stop right-order) u0)))
 			(asserts! 
 				(<= 
 					(if (is-order-triggered left-order-hash)
 						(get timestamp (get-triggered-orders-or-default left-order-hash))
-						(get timestamp left-parent)
+						(get timestamp left-order)
 					)	
 					(if (is-order-triggered right-order-hash) 
 						(get timestamp (get-triggered-orders-or-default right-order-hash))
-						(get timestamp right-parent)
+						(get timestamp right-order)
 					)
 				) 
 				err-invalid-timestamp
 			) ;; left-order must be older than right-order
-			(if (and (or (is-order-triggered left-order-hash) (is-eq (get stop left-parent) u0)) (is-some right-oracle-data))
+			(if (and (or (is-order-triggered left-order-hash) (is-eq (get stop left-order) u0)) (is-some right-oracle-data))
 				(let
 					(
 						(oracle-data (unwrap! right-oracle-data err-no-oracle-data))
-						(symbol (try! (get-oracle-symbol-or-fail (if right-buy (get taker-asset right-parent) (get maker-asset right-parent)))))
+						(symbol (try! (get-oracle-symbol-or-fail (if right-buy (get taker-asset right-order) (get maker-asset right-order)))))
 						(signer (try! (contract-call? .redstone-verify recover-signer (get timestamp oracle-data) (list {value: (get value oracle-data), symbol: symbol}) (get signature oracle-data))))
 					)
 					(asserts! (is-trusted-oracle signer) err-untrusted-oracle)
-					(asserts! (<= (get timestamp right-parent) (get timestamp oracle-data)) err-invalid-timestamp)				
+					(asserts! (<= (get timestamp right-order) (get timestamp oracle-data)) err-invalid-timestamp)				
 					(asserts! 
 						(<= 
 							(if (is-order-triggered left-order-hash)
 								(get timestamp (get-triggered-orders-or-default left-order-hash))
-								(get timestamp left-parent)
+								(get timestamp left-order)
 							)
 							(get timestamp oracle-data)
 						)
 						err-invalid-timestamp
 					)
-					(if (get risk right-parent) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-						(asserts! (if right-buy (>= (get value oracle-data) (get stop right-parent)) (<= (get value oracle-data) (get stop right-parent))) err-stop-not-triggered)
-						(asserts! (if right-buy (<= (get value oracle-data) (get stop right-parent)) (>= (get value oracle-data) (get stop right-parent))) err-stop-not-triggered)
+					(if (get risk right-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
+						(asserts! (if right-buy (>= (get value oracle-data) (get stop right-order)) (<= (get value oracle-data) (get stop right-order))) err-stop-not-triggered)
+						(asserts! (if right-buy (<= (get value oracle-data) (get stop right-order)) (>= (get value oracle-data) (get stop right-order))) err-stop-not-triggered)
 					)				
 				)
-				(if (and (is-some left-oracle-data) (or (is-order-triggered right-order-hash) (is-eq (get stop right-parent) u0)))
+				(if (and (is-some left-oracle-data) (or (is-order-triggered right-order-hash) (is-eq (get stop right-order) u0)))
 					(let
 						(
 							(oracle-data (unwrap! left-oracle-data err-no-oracle-data))
-							(symbol (try! (get-oracle-symbol-or-fail (if left-buy (get taker-asset left-parent) (get maker-asset left-parent)))))
+							(symbol (try! (get-oracle-symbol-or-fail (if left-buy (get taker-asset left-order) (get maker-asset left-order)))))
 							(signer (try! (contract-call? .redstone-verify recover-signer (get timestamp oracle-data) (list {value: (get value oracle-data), symbol: symbol}) (get signature oracle-data))))
 						)
 						(asserts! (is-trusted-oracle signer) err-untrusted-oracle)
-						(asserts! (<= (get timestamp left-parent) (get timestamp oracle-data)) err-invalid-timestamp)				
+						(asserts! (<= (get timestamp left-order) (get timestamp oracle-data)) err-invalid-timestamp)				
 						(asserts! 
 							(<= 
 								(get timestamp oracle-data) 
 								(if (is-order-triggered right-order-hash)
 									(get timestamp (get-triggered-orders-or-default right-order-hash))
-									(get timestamp right-parent)
+									(get timestamp right-order)
 							 	)
 							) 
 							err-invalid-timestamp
 						)
-						(if (get risk left-parent) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-							(asserts! (if left-buy (>= (get value oracle-data) (get stop left-parent)) (<= (get value oracle-data) (get stop left-parent))) err-stop-not-triggered)
-							(asserts! (if left-buy (<= (get value oracle-data) (get stop left-parent)) (>= (get value oracle-data) (get stop left-parent))) err-stop-not-triggered)
+						(if (get risk left-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
+							(asserts! (if left-buy (>= (get value oracle-data) (get stop left-order)) (<= (get value oracle-data) (get stop left-order))) err-stop-not-triggered)
+							(asserts! (if left-buy (<= (get value oracle-data) (get stop left-order)) (>= (get value oracle-data) (get stop left-order))) err-stop-not-triggered)
 						)				
 					)
 					(let 
 						(							
 							(left-data (unwrap! left-oracle-data err-no-oracle-data))						
-							(symbol (try! (get-oracle-symbol-or-fail (if left-buy (get taker-asset left-parent) (get maker-asset left-parent)))))
+							(symbol (try! (get-oracle-symbol-or-fail (if left-buy (get taker-asset left-order) (get maker-asset left-order)))))
 							(left-signer (try! (contract-call? .redstone-verify recover-signer (get timestamp left-data) (list {value: (get value left-data), symbol: symbol}) (get signature left-data))))							
 							(right-data (unwrap! right-oracle-data err-no-oracle-data))
 							(right-signer (try! (contract-call? .redstone-verify recover-signer (get timestamp right-data) (list {value: (get value right-data), symbol: symbol}) (get signature right-data))))							
 						)
 						(asserts! (and (is-trusted-oracle left-signer) (is-trusted-oracle right-signer)) err-untrusted-oracle)
-						(asserts! (and (<= (get timestamp left-parent) (get timestamp left-data)) (<= (get timestamp right-parent) (get timestamp right-data))) err-invalid-timestamp)				
+						(asserts! (and (<= (get timestamp left-order) (get timestamp left-data)) (<= (get timestamp right-order) (get timestamp right-data))) err-invalid-timestamp)				
 						(asserts! (<= (get timestamp left-data) (get timestamp right-data)) err-invalid-timestamp)
-						(if (get risk left-parent) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-							(asserts! (if left-buy (>= (get value left-data) (get stop left-parent)) (<= (get value left-data) (get stop left-parent))) err-stop-not-triggered)
-							(asserts! (if left-buy (<= (get value left-data) (get stop left-parent)) (>= (get value left-data) (get stop left-parent))) err-stop-not-triggered)
+						(if (get risk left-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
+							(asserts! (if left-buy (>= (get value left-data) (get stop left-order)) (<= (get value left-data) (get stop left-order))) err-stop-not-triggered)
+							(asserts! (if left-buy (<= (get value left-data) (get stop left-order)) (>= (get value left-data) (get stop left-order))) err-stop-not-triggered)
 						)	
-						(if (get risk right-parent) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
-							(asserts! (if right-buy (>= (get value right-data) (get stop right-parent)) (<= (get value right-data) (get stop right-parent))) err-stop-not-triggered)
-							(asserts! (if right-buy (<= (get value right-data) (get stop right-parent)) (>= (get value right-data) (get stop right-parent))) err-stop-not-triggered)
+						(if (get risk right-order) ;; it is risk-mgmt stop limit, i.e. buy on the way up (to hedge sell) or sell on the way down (to hedge buy)
+							(asserts! (if right-buy (>= (get value right-data) (get stop right-order)) (<= (get value right-data) (get stop right-order))) err-stop-not-triggered)
+							(asserts! (if right-buy (<= (get value right-data) (get stop right-order)) (>= (get value right-data) (get stop right-order))) err-stop-not-triggered)
 						)											
 					)
 				)
@@ -493,110 +502,88 @@
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		;;;;;;;;;;;;;;;;;;; PERPETUAL-SPECIFIC CHECKS ;;;;;;;;;;;;;;;;;;;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		(match (get linked left-order)
-			left-linked 
-			(begin
-				;; validate parent-linked data
-				(asserts! (is-eq (get maker left-parent) (get maker left-linked)) err-maker-mismatch)
-				(asserts! (is-eq (get maker-asset left-parent) (get taker-asset left-linked)) err-maker-asset-mismatch)
-				(asserts! (is-eq (get taker-asset left-parent) (get maker-asset left-linked)) err-taker-asset-mismatch)
-				(asserts! (is-eq (get maximum-fill left-parent) (get maximum-fill left-linked)) err-maximum-fill-mismatch)
-				(asserts! (is-eq (get expiration-height left-linked) u340282366920938463463374607431768211455) err-expiration-height-mismatch)
-				(asserts! (get risk left-linked) err-invalid-risk-type)
-				(asserts! (is-eq left-order-hash (get linked-hash left-linked)) err-order-hash-mismatch)			
-				(if left-buy 
-					(let 
-						(
-							(parent-limit-in-fixed (/ (* (get maker-asset-data left-parent) ONE_8) (get taker-asset-data left-parent)))
-							(linked-limit-in-fixed (/ (* (get taker-asset-data left-linked) ONE_8) (get maker-asset-data left-linked)))
-							(risk-params_ (try! (get-risk-params-or-fail (get taker-asset left-parent))))
-							(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))
-							(leverage (div-down parent-limit-in-fixed (- parent-limit-in-fixed linked-limit-in-fixed)))							
-							(stop-floor (div-down (mul-down linked-limit-in-fixed (- max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (- max-leverage-in-fixed ONE_8)))
-						)
-						(asserts! (>= (get stop left-linked) linked-limit-in-fixed) err-invalid-stop-price)
-						(asserts! (>= (get stop left-linked) stop-floor) err-invalid-stop-price)
-						(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
-					)
-					(let 
-						(
-							(parent-limit-in-fixed (/ (* (get taker-asset-data left-parent) ONE_8) (get maker-asset-data left-parent)))
-							(linked-limit-in-fixed (/ (* (get maker-asset-data left-linked) ONE_8) (get taker-asset-data left-linked)))
-							(risk-params_ (try! (get-risk-params-or-fail (get maker-asset left-parent))))
-							(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))
-							(leverage (div-down parent-limit-in-fixed (- linked-limit-in-fixed parent-limit-in-fixed)))
-							(stop-cap (div-down (mul-down linked-limit-in-fixed (+ max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (+ max-leverage-in-fixed ONE_8)))
-						)
-						(asserts! (<= (get stop left-linked) linked-limit-in-fixed) err-invalid-stop-price)
-						(asserts! (<= (get stop left-linked) stop-cap) err-invalid-stop-price)
-						(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
-					)					
-				)				
-			)
+		(if (is-eq (len (get linked-hash left-order)) u0)
+			(if left-buy 
+				(let 
+					(
+						(parent-limit-in-fixed (/ (* (get maker-asset-data left-order) ONE_8) (get taker-asset-data left-order)))
+						(linked-limit-in-fixed (/ (* (get linked-taker-data left-order) ONE_8) (get linked-maker-data left-order)))
+						(risk-params_ (try! (get-risk-params-or-fail (get taker-asset left-order))))
+						(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))							
+						(leverage (div-down parent-limit-in-fixed (- parent-limit-in-fixed linked-limit-in-fixed)))
+						(stop-floor (div-down (mul-down linked-limit-in-fixed (- max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (- max-leverage-in-fixed ONE_8)))
+					) 
+					(asserts! (>= (get linked-stop left-order) linked-limit-in-fixed) err-invalid-stop-price)
+					(asserts! (>= (get linked-stop left-order) stop-floor) err-invalid-stop-price)
+					(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
+				)
+				(let 
+					(
+						(parent-limit-in-fixed (/ (* (get taker-asset-data left-order) ONE_8) (get maker-asset-data left-order)))
+						(linked-limit-in-fixed (/ (* (get linked-maker-data left-order) ONE_8) (get linked-taker-data left-order)))
+						(risk-params_ (try! (get-risk-params-or-fail (get maker-asset left-order))))
+						(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))
+						(leverage (div-down parent-limit-in-fixed (- linked-limit-in-fixed parent-limit-in-fixed)))
+						(stop-cap (div-down (mul-down linked-limit-in-fixed (+ max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (+ max-leverage-in-fixed ONE_8)))
+					) 
+					(asserts! (<= (get linked-stop left-order) linked-limit-in-fixed) err-invalid-stop-price)
+					(asserts! (<= (get linked-stop left-order) stop-cap) err-invalid-stop-price)
+					(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
+				)					
+			)	
 			(let
 				;; if linked order does not exist, then it is to reduce position (or liquidation by the linked order)
 				;; linked-hash of parent contains the hash of the initiating order	
 				(
-					(linked-order (unwrap! (map-get? positions (get linked-hash left-parent)) err-linked-order-not-found))
+					(linked-order (unwrap! (map-get? positions (get linked-hash left-order)) err-linked-order-not-found))
 				)
-				(asserts! (is-eq (get maker left-parent) (get maker linked-order)) err-maker-mismatch)
-				(asserts! (is-eq (get maker-asset left-parent) (get taker-asset linked-order)) err-maker-asset-mismatch)
-				(asserts! (is-eq (get taker-asset left-parent) (get maker-asset linked-order)) err-taker-asset-mismatch)
+				(asserts! (is-eq (get maker left-order) (get maker linked-order)) err-maker-mismatch)
+				(asserts! (is-eq (get maker-asset left-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
+				(asserts! (is-eq (get taker-asset left-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
 				;; numeraire must be the same
-				(asserts! (is-eq (get maker-asset-data left-parent) (get taker-asset-data linked-order)) err-asset-data-mismatch)
+				(asserts! (is-eq (get maker-asset-data left-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)
 			)
 		)
-		(match (get linked right-order)
-			right-linked	
-			(begin	
-				;; validate parent-linked data
-				(asserts! (is-eq (get maker right-parent) (get maker right-linked)) err-maker-mismatch)		
-				(asserts! (is-eq (get maker-asset right-parent) (get taker-asset right-linked)) err-maker-asset-mismatch)		
-				(asserts! (is-eq (get taker-asset right-parent) (get maker-asset right-linked)) err-taker-asset-mismatch)		
-				(asserts! (is-eq (get maximum-fill right-parent) (get maximum-fill right-linked)) err-maximum-fill-mismatch)		
-				(asserts! (is-eq (get expiration-height right-linked) u340282366920938463463374607431768211455) err-expiration-height-mismatch)		
-				(asserts! (get risk right-linked) err-invalid-risk-type)
-				(asserts! (is-eq right-order-hash (get linked-hash right-linked)) err-order-hash-mismatch)
-				(if right-buy 
-					(let 
-						(
-							(parent-limit-in-fixed (/ (* (get maker-asset-data right-parent) ONE_8) (get taker-asset-data right-parent)))
-							(linked-limit-in-fixed (/ (* (get taker-asset-data right-linked) ONE_8) (get maker-asset-data right-linked)))
-							(risk-params_ (try! (get-risk-params-or-fail (get taker-asset right-parent))))
-							(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))							
-							(leverage (div-down parent-limit-in-fixed (- parent-limit-in-fixed linked-limit-in-fixed)))
-							(stop-floor (div-down (mul-down linked-limit-in-fixed (- max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (- max-leverage-in-fixed ONE_8)))
-						) 
-						(asserts! (>= (get stop right-linked) linked-limit-in-fixed) err-invalid-stop-price)
-						(asserts! (>= (get stop right-linked) stop-floor) err-invalid-stop-price)
-						(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
-					)
-					(let 
-						(
-							(parent-limit-in-fixed (/ (* (get taker-asset-data right-parent) ONE_8) (get maker-asset-data right-parent)))
-							(linked-limit-in-fixed (/ (* (get maker-asset-data right-linked) ONE_8) (get taker-asset-data right-linked)))
-							(risk-params_ (try! (get-risk-params-or-fail (get maker-asset right-parent))))
-							(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))
-							(leverage (div-down parent-limit-in-fixed (- linked-limit-in-fixed parent-limit-in-fixed)))
-							(stop-cap (div-down (mul-down linked-limit-in-fixed (+ max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (+ max-leverage-in-fixed ONE_8)))
-						) 
-						(asserts! (<= (get stop right-linked) linked-limit-in-fixed) err-invalid-stop-price)
-						(asserts! (<= (get stop right-linked) stop-cap) err-invalid-stop-price)
-						(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
-					)					
-				)				
+		(if (is-eq (len (get linked-hash right-order)) u0)
+			(if right-buy 
+				(let 
+					(
+						(parent-limit-in-fixed (/ (* (get maker-asset-data right-order) ONE_8) (get taker-asset-data right-order)))
+						(linked-limit-in-fixed (/ (* (get linked-taker-data right-order) ONE_8) (get linked-maker-data right-order)))
+						(risk-params_ (try! (get-risk-params-or-fail (get taker-asset right-order))))
+						(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))							
+						(leverage (div-down parent-limit-in-fixed (- parent-limit-in-fixed linked-limit-in-fixed)))
+						(stop-floor (div-down (mul-down linked-limit-in-fixed (- max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (- max-leverage-in-fixed ONE_8)))
+					) 
+					(asserts! (>= (get linked-stop right-order) linked-limit-in-fixed) err-invalid-stop-price)
+					(asserts! (>= (get linked-stop right-order) stop-floor) err-invalid-stop-price)
+					(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
+				)
+				(let 
+					(
+						(parent-limit-in-fixed (/ (* (get taker-asset-data right-order) ONE_8) (get maker-asset-data right-order)))
+						(linked-limit-in-fixed (/ (* (get linked-maker-data right-order) ONE_8) (get linked-taker-data right-order)))
+						(risk-params_ (try! (get-risk-params-or-fail (get maker-asset right-order))))
+						(max-leverage-in-fixed (* (get max-leverage risk-params_) ONE_8))
+						(leverage (div-down parent-limit-in-fixed (- linked-limit-in-fixed parent-limit-in-fixed)))
+						(stop-cap (div-down (mul-down linked-limit-in-fixed (+ max-leverage-in-fixed (get haircut-in-fixed risk-params_))) (+ max-leverage-in-fixed ONE_8)))
+					) 
+					(asserts! (<= (get linked-stop right-order) linked-limit-in-fixed) err-invalid-stop-price)
+					(asserts! (<= (get linked-stop right-order) stop-cap) err-invalid-stop-price)
+					(asserts! (>= max-leverage-in-fixed leverage) err-invalid-limit-price)
+				)					
 			)
 			(let
 				;; if linked order does not exist, then it is to reduce position (or liquidation by the linked order)
 				;; linked-hash of parent contains the hash of the initiating order
 				(
-					(linked-order (unwrap! (map-get? positions (get linked-hash right-parent)) err-linked-order-not-found))
+					(linked-order (unwrap! (map-get? positions (get linked-hash right-order)) err-linked-order-not-found))
 				)
-				(asserts! (is-eq (get maker right-parent) (get maker linked-order)) err-maker-mismatch)
-				(asserts! (is-eq (get maker-asset right-parent) (get taker-asset linked-order)) err-maker-asset-mismatch)
-				(asserts! (is-eq (get taker-asset right-parent) (get maker-asset linked-order)) err-taker-asset-mismatch)
+				(asserts! (is-eq (get maker right-order) (get maker linked-order)) err-maker-mismatch)
+				(asserts! (is-eq (get maker-asset right-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
+				(asserts! (is-eq (get taker-asset right-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
 				;; numeraire must be the same
-				(asserts! (is-eq (get maker-asset-data right-parent) (get taker-asset-data linked-order)) err-asset-data-mismatch)			
+				(asserts! (is-eq (get maker-asset-data right-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)			
 			)
 		)		
 
@@ -609,15 +596,15 @@
 			left-order-fill: left-order-fill,
 			right-order-fill: right-order-fill,
 			fillable: fillable,
-			left-order-make: (get maker-asset-data left-parent),
-			right-order-make: (get taker-asset-data left-parent),
+			left-order-make: (get maker-asset-data left-order),
+			right-order-make: (get taker-asset-data left-order),
 			left-buy: left-buy
 			}
 		)
 	)
 )
 
-(define-public (approve-order (order { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) }))
+(define-public (approve-order (order { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }))
 	(begin
 		(asserts! (is-eq (try! (contract-call? .stxdx-registry user-maker-from-id-or-fail (get maker order))) tx-sender) err-maker-not-tx-sender)
 		(contract-call? .stxdx-registry set-order-approval (hash-order order) true)
@@ -648,16 +635,10 @@
 
 (define-public (match-orders
 	(left-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}			
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }			
 	)
 	(right-order
-		{
-			parent: { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) },
-			linked: (optional { sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32) })
-		}
+		{ sender: uint, sender-fee: uint, maker: uint, maker-asset: uint, taker-asset: uint, maker-asset-data: uint, taker-asset-data: uint, maximum-fill: uint, expiration-height: uint, salt: uint, risk: bool, stop: uint, timestamp: uint, type: uint, linked-hash: (buff 32), linked-maker-data: uint, linked-taker-data: uint, linked-stop: uint }
 	)
 	(left-signature (buff 65))
 	(right-signature (buff 65))
@@ -669,8 +650,8 @@
 		(
 			(validation-data (try! (validate-match left-order right-order left-signature right-signature left-oracle-data right-oracle-data fill)))
 			(fillable (match fill value value (get fillable validation-data)))
-			(left-parent-make (get left-order-make validation-data))
-			(right-parent-make (get right-order-make validation-data))
+			(left-order-make (get left-order-make validation-data))
+			(right-order-make (get right-order-make validation-data))
 			(left-buy (get left-buy validation-data))
 			(right-buy (not left-buy))
 		)
@@ -681,138 +662,172 @@
 			(get left-order-hash validation-data)
 			{
 				triggered: true,
-				timestamp: (match left-oracle-data value (get timestamp value) (get timestamp (get parent left-order)))
+				timestamp: (match left-oracle-data value (get timestamp value) (get timestamp left-order))
 			}
 		)
 		(map-set triggered-orders 
 			(get right-order-hash validation-data)
 			{
 				triggered: true,
-				timestamp: (match right-oracle-data value (get timestamp value) (get timestamp (get parent right-order)))
+				timestamp: (match right-oracle-data value (get timestamp value) (get timestamp right-order))
 			}
 		)				
 
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		;;;;;;;;;;;;;;;;;;;;;; PERPETUAL-SPECIFIC OPS ;;;;;;;;;;;;;;;;;;;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		(match (get linked left-order)
-			left-linked
+		(if (is-eq (len (get linked-hash left-order)) u0)
 			(let 
 				;; if linked order exists, then it is to add position
 				;; linked-hash of parent contains the hash of linked, for validation
 			 	(
-					(parent-order (get parent left-order))
-					(asset-id (if left-buy (get maker-asset parent-order) (get taker-asset parent-order)))
-					(make-per-fill (if left-buy left-parent-make right-parent-make))
-					(margin-per-fill (if left-buy (- left-parent-make (get taker-asset-data left-linked)) (- (get maker-asset-data left-linked) right-parent-make)))
-					(linked-order-hash (hash-order left-linked))
+					(asset-id (if left-buy (get maker-asset left-order) (get taker-asset left-order)))
+					(make-per-fill (if left-buy left-order-make right-order-make))
+					(margin-per-fill (if left-buy (- left-order-make (get linked-taker-data left-order)) (- (get linked-maker-data left-order) right-order-make)))
+					(linked-order
+						{
+							sender: (get sender left-order),
+							sender-fee: (get sender-fee left-order),
+							maker: (get maker left-order),
+							maker-asset: (get taker-asset left-order),
+							taker-asset: (get maker-asset left-order),
+							maker-asset-data: (get linked-maker-data left-order),
+							taker-asset-data: (get linked-taker-data left-order),
+							maximum-fill: (get maximum-fill left-order),
+							expiration-height: u340282366920938463463374607431768211455,
+							salt: (get salt left-order),
+							risk: true,
+							stop: (get linked-stop left-order),
+							timestamp: (get timestamp left-order),
+							type: u0,
+							linked-hash: (get left-order-hash validation-data),
+							linked-maker-data: u0,
+							linked-taker-data: u0,
+							linked-stop: u0
+						}						
+					)
 				)
-				(map-set linked-orders linked-order-hash true)
+				(map-set linked-orders (hash-order linked-order) true)
 				(map-set 
 					positions
 					(get left-order-hash validation-data) 
 					{ 
-						maker: (get maker parent-order), 
-						maker-asset: (get maker-asset parent-order),
-						taker-asset: (get taker-asset parent-order),
-						maker-asset-data: left-parent-make, 
-						taker-asset-data: (get taker-asset-data parent-order),
-						;; linked-hash: linked-order-hash,
+						maker: (get maker left-order), 
+						maker-asset: (get maker-asset left-order),
+						taker-asset: (get taker-asset left-order),
+						maker-asset-data: left-order-make, 
+						taker-asset-data: (get taker-asset-data left-order),
 						margin-per-fill: margin-per-fill 
 					}
 				)
 				;; when adding position, you pay initial margin to exchange
-				(try! (settle-to-exchange (get maker parent-order) (get sender parent-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee parent-order) (* fillable make-per-fill))))				
+				(try! (settle-to-exchange (get maker left-order) (get sender left-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee left-order) (* fillable make-per-fill))))				
 			)
 			(let 
 				;; if linked order does not exist, then it is to reduce position (or liquidation by the linked order)
 				;; linked-hash of parent contains the hash of the initiating order, so we can settle against that.
 				(
-					(parent-order (get parent left-order))
-					(linked-order (unwrap! (map-get? positions (get linked-hash parent-order)) err-linked-order-not-found))
+					(linked-order (unwrap! (map-get? positions (get linked-hash left-order)) err-linked-order-not-found))
 					(linked-order-make (get maker-asset-data linked-order))
 					(linked-order-take (get taker-asset-data linked-order))
-					(asset-id (if left-buy (get maker-asset parent-order) (get taker-asset parent-order)))
-					(make-per-fill (if left-buy left-parent-make right-parent-make))
+					(asset-id (if left-buy (get maker-asset left-order) (get taker-asset left-order)))
+					(make-per-fill (if left-buy left-order-make right-order-make))
 					(margin-per-fill (get margin-per-fill linked-order))
 					;; TODO: need to consider default situation
 					(settle-per-fill 
 						(if left-buy 
-							(if (>= linked-order-take left-parent-make) 
-								(+ margin-per-fill (- linked-order-take left-parent-make))
-								(- margin-per-fill (- left-parent-make linked-order-take))
+							(if (>= linked-order-take left-order-make) 
+								(+ margin-per-fill (- linked-order-take left-order-make))
+								(- margin-per-fill (- left-order-make linked-order-take))
 							)
-							(if (>= right-parent-make linked-order-make)
-								(+ margin-per-fill (- right-parent-make linked-order-make))
-								(- margin-per-fill (- linked-order-make right-parent-make))
+							(if (>= right-order-make linked-order-make)
+								(+ margin-per-fill (- right-order-make linked-order-make))
+								(- margin-per-fill (- linked-order-make right-order-make))
 							)
 						)
 					)
 				)
-				(try! (settle-from-exchange (get maker parent-order) (get sender parent-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee parent-order) (* fillable make-per-fill))))
+				(try! (settle-from-exchange (get maker left-order) (get sender left-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee left-order) (* fillable make-per-fill))))
 			)
 		)	
 
-		(match (get linked right-order)
-			right-linked
+		(if (is-eq (len (get linked-hash right-order)) u0)
 			(let 
 				;; if linked order exists, then it is to add position
 				;; linked-hash of parent contains the hash of linked, for validation
 			 	(
-					(parent-order (get parent right-order))
-					(asset-id (if right-buy (get maker-asset parent-order) (get taker-asset parent-order)))
-					(make-per-fill (if right-buy right-parent-make left-parent-make))
-					(margin-per-fill (if right-buy (- right-parent-make (get taker-asset-data right-linked)) (- (get maker-asset-data right-linked) left-parent-make)))
-					(linked-order-hash (hash-order right-linked))
+					(asset-id (if right-buy (get maker-asset right-order) (get taker-asset right-order)))
+					(make-per-fill (if right-buy right-order-make left-order-make))
+					(margin-per-fill (if right-buy (- right-order-make (get linked-taker-data right-order)) (- (get linked-maker-data right-order) left-order-make)))
+					(linked-order
+						{
+							sender: (get sender right-order),
+							sender-fee: (get sender-fee right-order),
+							maker: (get maker right-order),
+							maker-asset: (get taker-asset right-order),
+							taker-asset: (get maker-asset right-order),
+							maker-asset-data: (get linked-maker-data right-order),
+							taker-asset-data: (get linked-taker-data right-order),
+							maximum-fill: (get maximum-fill right-order),
+							expiration-height: u340282366920938463463374607431768211455,
+							salt: (get salt right-order),
+							risk: true,
+							stop: (get linked-stop right-order),
+							timestamp: (get timestamp right-order),
+							type: u0,
+							linked-hash: (get right-order-hash validation-data),
+							linked-maker-data: u0,
+							linked-taker-data: u0,
+							linked-stop: u0
+						}						
+					)
 				)
-				(map-set linked-orders linked-order-hash true)
+				(map-set linked-orders (hash-order linked-order) true)
 				(map-set 
 					positions
 					(get right-order-hash validation-data) 
 					{ 
-						maker: (get maker parent-order), 
-						maker-asset: (get maker-asset parent-order),
-						taker-asset: (get taker-asset parent-order),
-						maker-asset-data: right-parent-make, 
-						taker-asset-data: (get taker-asset-data parent-order),
-						;; linked-hash: linked-order-hash,
+						maker: (get maker right-order), 
+						maker-asset: (get maker-asset right-order),
+						taker-asset: (get taker-asset right-order),
+						maker-asset-data: right-order-make, 
+						taker-asset-data: (get taker-asset-data right-order),
 						margin-per-fill: margin-per-fill 
 					}
 				)
 				;; when adding position, you pay initial margin to exchange
-				(try! (settle-to-exchange (get maker parent-order) (get sender parent-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee parent-order) (* fillable make-per-fill))))				
+				(try! (settle-to-exchange (get maker right-order) (get sender right-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))))				
 			)
 			(let 
 				;; if linked order does not exist, then it is to reduce position (or liquidation by the linked order)
 				;; linked-hash of parent contains the hash of the initiating order, so we can settle against that.
 				(
-					(parent-order (get parent right-order))
-					(linked-order (unwrap! (map-get? positions (get linked-hash parent-order)) err-linked-order-not-found))
+					(linked-order (unwrap! (map-get? positions (get linked-hash right-order)) err-linked-order-not-found))
 					(linked-order-make (get maker-asset-data linked-order))
 					(linked-order-take (get taker-asset-data linked-order))
-					(asset-id (if right-buy (get maker-asset parent-order) (get taker-asset parent-order)))
-					(make-per-fill (if right-buy left-parent-make right-parent-make))
+					(asset-id (if right-buy (get maker-asset right-order) (get taker-asset right-order)))
+					(make-per-fill (if right-buy left-order-make right-order-make))
 					(margin-per-fill (get margin-per-fill linked-order))
 					;; TODO: need to consider default situation
 					(settle-per-fill 
 						(if right-buy 
-							(if (>= linked-order-make left-parent-make) 
-								(+ margin-per-fill (- linked-order-make left-parent-make))
-								(- margin-per-fill (- left-parent-make linked-order-make))
+							(if (>= linked-order-make left-order-make) 
+								(+ margin-per-fill (- linked-order-make left-order-make))
+								(- margin-per-fill (- left-order-make linked-order-make))
 							)
-							(if (>= right-parent-make linked-order-take)
-								(+ margin-per-fill (- right-parent-make linked-order-take))
-								(- margin-per-fill (- linked-order-take right-parent-make))
+							(if (>= right-order-make linked-order-take)
+								(+ margin-per-fill (- right-order-make linked-order-take))
+								(- margin-per-fill (- linked-order-take right-order-make))
 							)
 						)
 					)
 				)
-				(try! (settle-from-exchange (get maker parent-order) (get sender parent-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee parent-order) (* fillable make-per-fill))))
+				(try! (settle-from-exchange (get maker right-order) (get sender right-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))))
 			)
 		)		
 
 		(try! (contract-call? .stxdx-registry set-two-order-fills (get left-order-hash validation-data) (+ (get left-order-fill validation-data) fillable) (get right-order-hash validation-data) (+ (get right-order-fill validation-data) fillable)))				
-		(ok { fillable: fillable, left-order-make: left-parent-make, right-order-make: right-parent-make })
+		(ok { fillable: fillable, left-order-make: left-order-make, right-order-make: right-order-make })
 	)
 )
 

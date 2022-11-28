@@ -1129,6 +1129,21 @@ Clarinet.test({
       e.result.expectOk();
     });
 
+    // start with liteEvmSignature.
+    // the signature = Buffer.from(liteSignatureToStacksSignature(`${liteEvmSignature}`)).toString('hex')
+    const oracle_signature =
+      '0x71b534851bcd7584e7743043917606968cfc571c45e765d088aa07c2347b2c7918506ee6002b4014514523494367232c334d22a25167fcf8682a1f79ada700db01';
+
+    const pricePackage: PricePackage = {
+      timestamp: 1662540506183,
+      prices: [
+        {
+          symbol: 'BTC',
+          value: 18805.300000000003,
+        },
+      ],
+    };
+
     const left_order = perpOrderToTupleCV({
       sender: 1,
       'sender-fee': 0.001e8,
@@ -1159,7 +1174,7 @@ Clarinet.test({
       'expiration-height': 340282366920938463463374607431768211455n,
       salt: 2,
       risk: true,
-      stop: 13650e8, // 2.5% down
+      stop: 18805e8, // 2.5% down
       timestamp: 1,
       type: 0,
       'linked-hash':
