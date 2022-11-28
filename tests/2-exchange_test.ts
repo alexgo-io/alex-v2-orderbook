@@ -782,38 +782,51 @@ Clarinet.test({
         sender.address,
       ),
     ]);
-    const receipt = block.receipts[0];
-    const events = receipt.events as { contract_event: { value: string } }[];
-    receipt.result.expectOk().expectTuple()['fillable'].expectUint(50e8);
+    block.receipts[0].result
+      .expectOk()
+      .expectTuple()
+      ['fillable'].expectUint(50e8);
 
-    assertEquals(events[0].contract_event.value.expectTuple(), {
-      amount: types.uint((14000 - 13300) * 50e8),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(4),
-      'sender-id': types.uint(2),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[1].contract_event.value.expectTuple(), {
-      amount: types.uint(14000 * 50e8 * 0.001),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(1),
-      'sender-id': types.uint(2),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[2].contract_event.value.expectTuple(), {
-      amount: types.uint((14700 - 14000) * 50e8),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(4),
-      'sender-id': types.uint(3),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[3].contract_event.value.expectTuple(), {
-      amount: types.uint(14000 * 50e8 * 0.001),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(1),
-      'sender-id': types.uint(3),
-      type: types.ascii('internal_transfer'),
-    });
+    assertEquals(
+      block.receipts[0].events[0].contract_event.value.expectTuple(),
+      {
+        amount: types.uint((14000 - 13300) * 50e8),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(2),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[1].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(14000 * 50e8 * 0.001),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(1),
+        'sender-id': types.uint(2),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint((14700 - 14000) * 50e8),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(3),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[3].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(14000 * 50e8 * 0.001),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(1),
+        'sender-id': types.uint(3),
+        type: types.ascii('internal_transfer'),
+      },
+    );
   },
 });
 Clarinet.test({
@@ -973,39 +986,52 @@ Clarinet.test({
         sender.address,
       ),
     ]);
-    const receipt = block_2.receipts[0];
-    const events = receipt.events as { contract_event: { value: string } }[];
-    receipt.result.expectOk().expectTuple()['fillable'].expectUint(20e8);
+    block_2.receipts[0].result
+      .expectOk()
+      .expectTuple()
+      ['fillable'].expectUint(20e8);
 
-    // console.log(receipt.events);
-    assertEquals(events[0].contract_event.value.expectTuple(), {
-      amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(2),
-      'sender-id': types.uint(4),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[1].contract_event.value.expectTuple(), {
-      amount: types.uint(13650 * 20e8 * 0.001),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(1),
-      'sender-id': types.uint(2),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[2].contract_event.value.expectTuple(), {
-      amount: types.uint((13650 - 12967) * 20e8),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(4),
-      'sender-id': types.uint(3),
-      type: types.ascii('internal_transfer'),
-    });
-    assertEquals(events[3].contract_event.value.expectTuple(), {
-      amount: types.uint(13650 * 20e8 * 0.001),
-      'asset-id': types.uint(1),
-      'recipient-id': types.uint(1),
-      'sender-id': types.uint(3),
-      type: types.ascii('internal_transfer'),
-    });
+    // console.log(block_2.receipts[0].events);
+    assertEquals(
+      block_2.receipts[0].events[0].contract_event.value.expectTuple(),
+      {
+        amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(2),
+        'sender-id': types.uint(4),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[1].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(13650 * 20e8 * 0.001),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(1),
+        'sender-id': types.uint(2),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint((13650 - 12967) * 20e8),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(3),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(13650 * 20e8 * 0.001),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(1),
+        'sender-id': types.uint(3),
+        type: types.ascii('internal_transfer'),
+      },
+    );
   },
 });
 
@@ -1019,28 +1045,13 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    // start with liteEvmSignature.
-    // the signature = Buffer.from(liteSignatureToStacksSignature(`${liteEvmSignature}`)).toString('hex')
-    const oracle_signature =
-      '0x71b534851bcd7584e7743043917606968cfc571c45e765d088aa07c2347b2c7918506ee6002b4014514523494367232c334d22a25167fcf8682a1f79ada700db01';
-
-    const pricePackage: PricePackage = {
-      timestamp: 1662540506183,
-      prices: [
-        {
-          symbol: 'BTC',
-          value: 18805.300000000003,
-        },
-      ],
-    };
-
     const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
       'maker-asset': 1,
       'taker-asset': 2,
-      'maker-asset-data': 14000,
+      'maker-asset-data': 19292,
       'taker-asset-data': 1,
       'maximum-fill': 100e8,
       'expiration-height': 100,
@@ -1051,8 +1062,8 @@ Clarinet.test({
       type: 0,
       'linked-hash': '0x',
       'linked-maker-data': 1,
-      'linked-taker-data': 13300, // 5% down
-      'linked-stop': 13650e8, // 2.5% down
+      'linked-taker-data': 18327, // 5% down
+      'linked-stop': 18810e8, // 2.5% down
     };
 
     const left_order = perpOrderToTupleCV(left_order_tuple);
@@ -1064,7 +1075,7 @@ Clarinet.test({
       'maker-asset': 2,
       'taker-asset': 1,
       'maker-asset-data': 1,
-      'taker-asset-data': 14000,
+      'taker-asset-data': 19292,
       'maximum-fill': 50e8,
       'expiration-height': 100,
       salt: 2,
@@ -1073,20 +1084,24 @@ Clarinet.test({
       timestamp: 2,
       type: 0,
       'linked-hash': '0x',
-      'linked-maker-data': 14700,
+      'linked-maker-data': 20256,
       'linked-taker-data': 1,
-      'linked-stop': 14350e8,
+      'linked-stop': 19774e8,
     });
 
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 19292, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 18327, \"linked-stop\": 18810e8 }"
     const left_order_hash =
-      '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec';
+      '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07';
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 19292, \"maximum-fill\": 50e8, \"expiration-height\": 100, \"salt\": 2, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 20256,\"linked-taker-data\": 1, \"linked-stop\": 19774e8 }"
     const right_order_hash =
-      '0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24';
+      '0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801';
 
+    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07
     const left_signature =
-      '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
+      '0x339330215ec53278e43b7198d77af695945820123eb9ff7faf13f5d9f07fc50066aee36028c02b617378b83481c127f514b0d7744fcef196b898582d967db51500';
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801
     const right_signature =
-      '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
+      '0xc0c4468935d23e66b1c007da317b208845d4cd49779e750fb3347486708c29370754b4872532bfff271f3d1c6eb5a66754f0412ffb5c4d317d94ed000e7623ca00';
 
     const block = chain.mineBlock([
       Tx.contractCall(
@@ -1120,14 +1135,14 @@ Clarinet.test({
       'maker-asset-data': left_order_tuple['linked-maker-data'],
       'taker-asset-data': left_order_tuple['linked-taker-data'],
       'maximum-fill': left_order_tuple['maximum-fill'],
-      'expiration-height': BigInt(340282366920938463463374607431768211455),
+      'expiration-height': '340282366920938463463374607431768211455',
       salt: left_order_tuple['salt'],
       risk: true,
       stop: left_order_tuple['linked-stop'],
       timestamp: left_order_tuple['timestamp'],
       type: 0,
       'linked-hash':
-        '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec',
+        '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07',
       'linked-maker-data': 0,
       'linked-taker-data': 0,
       'linked-stop': 0,
@@ -1139,7 +1154,7 @@ Clarinet.test({
       maker: 3,
       'maker-asset': 1,
       'taker-asset': 2,
-      'maker-asset-data': 13650,
+      'maker-asset-data': 18327,
       'taker-asset-data': 1,
       'maximum-fill': 100e8,
       'expiration-height': 100,
@@ -1150,17 +1165,32 @@ Clarinet.test({
       type: 0,
       'linked-hash': '0x',
       'linked-maker-data': 1,
-      'linked-taker-data': 12967,
-      'linked-stop': 13300e8,
+      'linked-taker-data': 17411,
+      'linked-stop': 17869e8,
     });
 
-    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 13650, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 12967, \"linked-stop\": 13300e8 }"
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 18327, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 17411, \"linked-stop\": 17869e8 }"
     const right_order_hash_2 =
-      '0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956';
+      '0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94';
 
-    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94
     const right_signature_2 =
-      '0x7e88ca05e1e2c16a6b89edd80b1a91e01df341c29165ab4ccc221043714598fc44949786dd28e7cdd926a70d5b82cafbdb0762f9c89acdb6a104ed697f43483200';
+      '0x0530b742d41822166b76f52caec87e85d900eaaef18a9e8b1f236588e70df7c506b9f989f9ae968766127f16ff19115c79686b5a33db9b2d314fc8e55eab0a1001';
+
+    // start with liteEvmSignature.
+    // the signature = Buffer.from(liteSignatureToStacksSignature(`${liteEvmSignature}`)).toString('hex')
+    const oracle_signature =
+      '0x71b534851bcd7584e7743043917606968cfc571c45e765d088aa07c2347b2c7918506ee6002b4014514523494367232c334d22a25167fcf8682a1f79ada700db01';
+
+    const pricePackage: PricePackage = {
+      timestamp: 1662540506183,
+      prices: [
+        {
+          symbol: 'BTC',
+          value: 18805.300000000003,
+        },
+      ],
+    };
 
     const block_2 = chain.mineBlock([
       Tx.contractCall(
@@ -1171,7 +1201,13 @@ Clarinet.test({
           right_order_2,
           '0x',
           right_signature_2,
-          types.none(),
+          types.some(
+            types.tuple({
+              timestamp: types.uint(pricePackage.timestamp),
+              value: types.uint(shiftPriceValue(pricePackage.prices[0].value)),
+              signature: oracle_signature,
+            }),
+          ),
           types.none(),
           types.none(),
         ],
