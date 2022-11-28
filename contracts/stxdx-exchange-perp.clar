@@ -379,8 +379,8 @@
 			(right-order-fill (get order-2 order-fills))
 			;; the linked order can be filled only up to the fill of the initiating order, 
 			;; which may be smaller than maximum-fill of the initiating order, or that of the linked order			
-			(left-linked-filled (if (is-some (map-get? positions (get linked-hash left-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash left-order)) u340282366920938463463374607431768211455))
-			(right-linked-filled (if (is-some (map-get? positions (get linked-hash right-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash right-order)) u340282366920938463463374607431768211455))
+			(left-linked-filled (if (is-some (map-get? positions (get linked-hash left-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash left-order)) MAX_UINT))
+			(right-linked-filled (if (is-some (map-get? positions (get linked-hash right-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash right-order)) MAX_UINT))
 			(fillable (min (- (min left-linked-filled (get maximum-fill left-order)) left-order-fill) (- (min right-linked-filled (get maximum-fill right-order)) right-order-fill)))		
 			(left-buy (is-some (map-get? oracle-symbols (get taker-asset left-order))))
 			(right-buy (not left-buy))
@@ -694,7 +694,7 @@
 							maker-asset-data: (get linked-maker-data left-order),
 							taker-asset-data: (get linked-taker-data left-order),
 							maximum-fill: (get maximum-fill left-order),
-							expiration-height: u340282366920938463463374607431768211455,
+							expiration-height: MAX_UINT,
 							salt: (get salt left-order),
 							risk: true,
 							stop: (get linked-stop left-order),
@@ -769,7 +769,7 @@
 							maker-asset-data: (get linked-maker-data right-order),
 							taker-asset-data: (get linked-taker-data right-order),
 							maximum-fill: (get maximum-fill right-order),
-							expiration-height: u340282366920938463463374607431768211455,
+							expiration-height: MAX_UINT,
 							salt: (get salt right-order),
 							risk: true,
 							stop: (get linked-stop right-order),
