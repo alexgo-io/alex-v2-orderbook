@@ -782,51 +782,38 @@ Clarinet.test({
         sender.address,
       ),
     ]);
-    block.receipts[0].result
-      .expectOk()
-      .expectTuple()
-      ['fillable'].expectUint(50e8);
+    const receipt = block.receipts[0];
+    const events = receipt.events as { contract_event: { value: string } }[];
+    receipt.result.expectOk().expectTuple()['fillable'].expectUint(50e8);
 
-    assertEquals(
-      block.receipts[0].events[0].contract_event.value.expectTuple(),
-      {
-        amount: types.uint((14000 - 13300) * 50e8),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(4),
-        'sender-id': types.uint(2),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block.receipts[0].events[1].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(14000 * 50e8 * 0.001),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block.receipts[0].events[2].contract_event.value.expectTuple(),
-      {
-        amount: types.uint((14700 - 14000) * 50e8),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block.receipts[0].events[3].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(14000 * 50e8 * 0.001),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
-        type: types.ascii('internal_transfer'),
-      },
-    );
+    assertEquals(events[0].contract_event.value.expectTuple(), {
+      amount: types.uint((14000 - 13300) * 50e8),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(4),
+      'sender-id': types.uint(2),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[1].contract_event.value.expectTuple(), {
+      amount: types.uint(14000 * 50e8 * 0.001),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(1),
+      'sender-id': types.uint(2),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[2].contract_event.value.expectTuple(), {
+      amount: types.uint((14700 - 14000) * 50e8),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(4),
+      'sender-id': types.uint(3),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[3].contract_event.value.expectTuple(), {
+      amount: types.uint(14000 * 50e8 * 0.001),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(1),
+      'sender-id': types.uint(3),
+      type: types.ascii('internal_transfer'),
+    });
   },
 });
 Clarinet.test({
@@ -986,52 +973,39 @@ Clarinet.test({
         sender.address,
       ),
     ]);
-    block_2.receipts[0].result
-      .expectOk()
-      .expectTuple()
-      ['fillable'].expectUint(20e8);
+    const receipt = block_2.receipts[0];
+    const events = receipt.events as { contract_event: { value: string } }[];
+    receipt.result.expectOk().expectTuple()['fillable'].expectUint(20e8);
 
-    // console.log(block_2.receipts[0].events);
-    assertEquals(
-      block_2.receipts[0].events[0].contract_event.value.expectTuple(),
-      {
-        amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(2),
-        'sender-id': types.uint(4),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block_2.receipts[0].events[1].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(13650 * 20e8 * 0.001),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
-      {
-        amount: types.uint((13650 - 12967) * 20e8),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(13650 * 20e8 * 0.001),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
-        type: types.ascii('internal_transfer'),
-      },
-    );
+    // console.log(receipt.events);
+    assertEquals(events[0].contract_event.value.expectTuple(), {
+      amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(2),
+      'sender-id': types.uint(4),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[1].contract_event.value.expectTuple(), {
+      amount: types.uint(13650 * 20e8 * 0.001),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(1),
+      'sender-id': types.uint(2),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[2].contract_event.value.expectTuple(), {
+      amount: types.uint((13650 - 12967) * 20e8),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(4),
+      'sender-id': types.uint(3),
+      type: types.ascii('internal_transfer'),
+    });
+    assertEquals(events[3].contract_event.value.expectTuple(), {
+      amount: types.uint(13650 * 20e8 * 0.001),
+      'asset-id': types.uint(1),
+      'recipient-id': types.uint(1),
+      'sender-id': types.uint(3),
+      type: types.ascii('internal_transfer'),
+    });
   },
 });
 
