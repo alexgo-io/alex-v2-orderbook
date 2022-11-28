@@ -309,13 +309,13 @@ Clarinet.test({
 
     const order = perpOrderToTupleCV({
       sender: 1,
-      'sender-fee': 1e8,
+      'sender-fee': 0.001e8,
       maker: 2,
       'maker-asset': 1,
       'taker-asset': 2,
-      'maker-asset-data': 14e8,
-      'taker-asset-data': 1e8,
-      'maximum-fill': 1000,
+      'maker-asset-data': 14000,
+      'taker-asset-data': 1,
+      'maximum-fill': 100e8,
       'expiration-height': 100,
       salt: 1,
       risk: false,
@@ -323,6 +323,9 @@ Clarinet.test({
       timestamp: 1,
       type: 0,
       'linked-hash': '0x',
+      'linked-maker-data': 1,
+      'linked-taker-data': 13300, // 5% down
+      'linked-stop': 13650e8, // 2.5% down
     });
     const response = chain.callReadOnlyFn(
       contractNames.perpetual,
@@ -331,10 +334,10 @@ Clarinet.test({
       sender.address,
     );
 
-    // yarn run generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 1e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 14e8, \"taker-asset-data\": 1e8, \"maximum-fill\": 1000, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\" }"
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 14000, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 13300, \"linked-stop\": 13650e8 }"
     assertEquals(
       response.result,
-      '0xc1d513ea01093e5aef0005ae6e5b89451d3568fec646aa6968287b7e52574302',
+      '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec',
     );
   },
 });
@@ -365,25 +368,9 @@ Clarinet.test({
       timestamp: 1,
       type: 0,
       'linked-hash': '0x',
-    });
-
-    const left_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 2,
-      'maker-asset': 2,
-      'taker-asset': 1,
-      'maker-asset-data': 1,
-      'taker-asset-data': 13300, // 5% down
-      'maximum-fill': 100e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 2,
-      risk: true,
-      stop: 13650e8, // 2.5% down
-      timestamp: 1,
-      type: 0,
-      'linked-hash':
-        '0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e',
+      'linked-maker-data': 1,
+      'linked-taker-data': 13300, // 5% down
+      'linked-stop': 13650e8, // 2.5% down
     });
 
     const right_order = perpOrderToTupleCV({
@@ -402,48 +389,31 @@ Clarinet.test({
       timestamp: 2,
       type: 0,
       'linked-hash': '0x',
+      'linked-maker-data': 14700,
+      'linked-taker-data': 1,
+      'linked-stop': 14350e8,
     });
 
-    const right_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 3,
-      'maker-asset': 1,
-      'taker-asset': 2,
-      'maker-asset-data': 14700,
-      'taker-asset-data': 1,
-      'maximum-fill': 50e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 3,
-      risk: true,
-      stop: 14350e8,
-      timestamp: 2,
-      type: 0,
-      'linked-hash':
-        '0x7dd31575a351d31538b0d9559a3f7f8411887058524397d82b07d3b870b9fcdf',
-    });
-    // console.log(left_order, right_order);
-
-    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 14000, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\" }"
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 14000, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 13300, \"linked-stop\": 13650e8 }"
     const left_order_hash =
-      '0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e';
-    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 14000, \"maximum-fill\": 50e8, \"expiration-height\": 100, \"salt\": 2, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x\" }"
+      '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec';
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 14000, \"maximum-fill\": 50e8, \"expiration-height\": 100, \"salt\": 2, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 14700,\"linked-taker-data\": 1, \"linked-stop\": 14350e8 }"
     const right_order_hash =
-      '0x7dd31575a351d31538b0d9559a3f7f8411887058524397d82b07d3b870b9fcdf';
+      '0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24';
 
-    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e
+    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec
     const left_signature =
-      '0xc3d183f2efa646b916f954dede095758fc5ac7cc4c9f1447666df90eb0b8dbf305e7c0ec62fd905a7e66188fe7e5fb814bee94c024781943f37d2bf25505e53700';
-    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x7dd31575a351d31538b0d9559a3f7f8411887058524397d82b07d3b870b9fcdf
+      '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24
     const right_signature =
-      '0x356799e2cdb405e1fbb9aefb460a055bbc5e7568afc880d21016a4c62a0a7241065565788bc2b694564f89a59a9991f797efc1315db52a344e23a791f0dcabf601';
+      '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
 
     let response = chain.callReadOnlyFn(
       contractNames.perpetual,
       'validate-match',
       [
-        types.tuple({ parent: left_order, linked: types.some(left_linked) }),
-        types.tuple({ parent: right_order, linked: types.some(right_linked) }),
+        left_order,
+        right_order,
         left_signature,
         right_signature,
         types.none(),

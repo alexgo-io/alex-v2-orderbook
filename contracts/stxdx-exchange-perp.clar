@@ -267,7 +267,7 @@
 (define-constant serialized-key-linked-maker-data (serialize-tuple-key "linked-maker-data"))
 (define-constant serialized-key-linked-taker-data (serialize-tuple-key "linked-taker-data"))
 (define-constant serialized-key-linked-stop (serialize-tuple-key "linked-stop"))
-(define-constant serialized-order-header (concat type-id-tuple (uint32-to-buff-be u15)))
+(define-constant serialized-order-header (concat type-id-tuple (uint32-to-buff-be u18)))
 
 (define-read-only (hash-order 
 	(order
