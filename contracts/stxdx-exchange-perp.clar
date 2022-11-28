@@ -71,7 +71,7 @@
 		taker-asset: uint, 
 		maker-asset-data: uint, 
 		taker-asset-data: uint,
-		linked-hash: (buff 32),
+		;; linked-hash: (buff 32),
 		margin-per-fill: uint
 	}
 )
@@ -238,7 +238,7 @@
 (define-private (validate-authorisation (fills uint) (maker principal) (maker-pubkey (buff 33)) (hash (buff 32)) (signature (buff 65)))
 	(begin
 		(or
-			(default-to false (map-get? linked-orders hash))
+			(and (is-eq (len signature) u0) (default-to false (map-get? linked-orders hash)))
 			(> fills u0)
 			(is-eq maker tx-sender)
 			(and (is-eq (len signature) u0) (contract-call? .stxdx-registry get-order-approval maker hash))
@@ -705,8 +705,9 @@
 					(asset-id (if left-buy (get maker-asset parent-order) (get taker-asset parent-order)))
 					(make-per-fill (if left-buy left-parent-make right-parent-make))
 					(margin-per-fill (if left-buy (- left-parent-make (get taker-asset-data left-linked)) (- (get maker-asset-data left-linked) right-parent-make)))
+					(linked-order-hash (hash-order left-linked))
 				)
-				(map-set linked-orders (get linked-hash parent-order) true)
+				(map-set linked-orders linked-order-hash true)
 				(map-set 
 					positions
 					(get left-order-hash validation-data) 
@@ -716,7 +717,7 @@
 						taker-asset: (get taker-asset parent-order),
 						maker-asset-data: left-parent-make, 
 						taker-asset-data: (get taker-asset-data parent-order),
-						linked-hash: (get linked-hash parent-order),
+						;; linked-hash: linked-order-hash,
 						margin-per-fill: margin-per-fill 
 					}
 				)
@@ -762,8 +763,9 @@
 					(asset-id (if right-buy (get maker-asset parent-order) (get taker-asset parent-order)))
 					(make-per-fill (if right-buy right-parent-make left-parent-make))
 					(margin-per-fill (if right-buy (- right-parent-make (get taker-asset-data right-linked)) (- (get maker-asset-data right-linked) left-parent-make)))
+					(linked-order-hash (hash-order right-linked))
 				)
-				(map-set linked-orders (get linked-hash parent-order) true)
+				(map-set linked-orders linked-order-hash true)
 				(map-set 
 					positions
 					(get right-order-hash validation-data) 
@@ -773,7 +775,7 @@
 						taker-asset: (get taker-asset parent-order),
 						maker-asset-data: right-parent-make, 
 						taker-asset-data: (get taker-asset-data parent-order),
-						linked-hash: (get linked-hash parent-order),
+						;; linked-hash: linked-order-hash,
 						margin-per-fill: margin-per-fill 
 					}
 				)
