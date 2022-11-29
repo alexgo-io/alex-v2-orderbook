@@ -1220,21 +1220,21 @@ Clarinet.test({
       ['fillable'].expectUint(50e8);
 
     console.log(block_2.receipts[0].events);
-    // assertEquals(
-    //   block_2.receipts[0].events[2].contract_event.value.expectTuple(),
-    //   {
-    //     amount: types.uint((19292 - 18327) * 50e8 - (19292 - 18327) * 50e8),
-    //     'asset-id': types.uint(1),
-    //     'recipient-id': types.uint(2),
-    //     'sender-id': types.uint(4),
-    //     type: types.ascii('internal_transfer'),
-    //   },
-    // );
+    assertEquals(
+      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint((19292 - 18327) * 50e8 - (19292 - 18327) * 50e8),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(2),
+        'sender-id': types.uint(4),
+        type: types.ascii('internal_transfer'),
+      },
+    );
     assertEquals(
       block_2.receipts[0].events[3].contract_event.value.expectTuple(),
       {
         amount: types.uint(
-          initiating_order['linked-taker-data'] * 50e8 * 0.001,
+          initiating_order['linked-maker-data'] * 50e8 * 0.001,
         ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(1),

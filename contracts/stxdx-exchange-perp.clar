@@ -741,7 +741,7 @@
 					(margin-per-fill (get margin-per-fill linked-order))
 					;; TODO: need to consider default situation
 					(settle-per-fill 
-						(if left-buy 
+						(if left-buy ;; left => liquidation (of buy), linked => initiating (of sell)
 							(if (>= linked-order-take left-order-make) 
 								(+ margin-per-fill (- linked-order-take left-order-make))
 								(- margin-per-fill (- left-order-make linked-order-take))
