@@ -52,6 +52,9 @@ function orderToTupleCV(order: { [key: string]: any }) {
     timestamp: uintCV,
     type: uintCV,
     'linked-hash': (input: any) => bufferCV(toBuffer(input)),
+    'linked-maker-data': uintCV,
+    'linked-taker-data': uintCV,
+    'linked-stop': uintCV,
   };
   const orderTuple: { [key: string]: any } = {};
   for (const [key, func] of Object.entries(expected_struct))

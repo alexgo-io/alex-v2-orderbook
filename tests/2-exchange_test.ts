@@ -719,7 +719,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const left_order = perpOrderToTupleCV({
+    const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -735,28 +735,12 @@ Clarinet.test({
       timestamp: 1,
       type: 0,
       'linked-hash': '0x',
-    });
+      'linked-maker-data': 1,
+      'linked-taker-data': 13300, // 5% down
+      'linked-stop': 13650e8, // 2.5% down
+    };
 
-    const left_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 2,
-      'maker-asset': 2,
-      'taker-asset': 1,
-      'maker-asset-data': 1,
-      'taker-asset-data': 13300, // 5% down
-      'maximum-fill': 100e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 2,
-      risk: true,
-      stop: 13650e8, // 2.5% down
-      timestamp: 1,
-      type: 0,
-      'linked-hash':
-        '0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e',
-    });
-
-    const right_order = perpOrderToTupleCV({
+    const right_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -772,43 +756,31 @@ Clarinet.test({
       timestamp: 2,
       type: 0,
       'linked-hash': '0x',
-    });
+      'linked-maker-data': 14700,
+      'linked-taker-data': 1,
+      'linked-stop': 14350e8,
+    };
 
-    const right_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 3,
-      'maker-asset': 1,
-      'taker-asset': 2,
-      'maker-asset-data': 14700,
-      'taker-asset-data': 1,
-      'maximum-fill': 50e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 3,
-      risk: true,
-      stop: 14350e8,
-      timestamp: 2,
-      type: 0,
-      'linked-hash':
-        '0x7dd31575a351d31538b0d9559a3f7f8411887058524397d82b07d3b870b9fcdf',
-    });
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
 
     const left_signature =
-      '0xc3d183f2efa646b916f954dede095758fc5ac7cc4c9f1447666df90eb0b8dbf305e7c0ec62fd905a7e66188fe7e5fb814bee94c024781943f37d2bf25505e53700';
-
+      '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
     const right_signature =
-      '0x356799e2cdb405e1fbb9aefb460a055bbc5e7568afc880d21016a4c62a0a7241065565788bc2b694564f89a59a9991f797efc1315db52a344e23a791f0dcabf601';
+      '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
+
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
 
     const block = chain.mineBlock([
       Tx.contractCall(
         contractNames.sender_proxy,
         'match-perp-orders',
         [
-          types.tuple({ parent: left_order, linked: types.some(left_linked) }),
-          types.tuple({
-            parent: right_order,
-            linked: types.some(right_linked),
-          }),
+          left_order,
+          right_order,
           left_signature,
           right_signature,
           types.none(),
@@ -821,50 +793,69 @@ Clarinet.test({
     block.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(order_fill);
 
     assertEquals(
       block.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14000 - 13300) * 50e8),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            order_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(2),
+        'sender-id': types.uint(left_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(14000 * 50e8 * 0.001),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] *
+            order_fill *
+            left_order_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
+        'recipient-id': types.uint(left_order_tuple['sender']),
+        'sender-id': types.uint(left_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[2].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14700 - 14000) * 50e8),
+        amount: types.uint(
+          (right_order_tuple['linked-maker-data'] -
+            right_order_tuple['taker-asset-data']) *
+            order_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
+        'sender-id': types.uint(right_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[3].contract_event.value.expectTuple(),
       {
-        amount: types.uint(14000 * 50e8 * 0.001),
+        amount: types.uint(
+          (right_order_tuple['taker-asset-data'] *
+            order_fill *
+            right_order_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
+        'recipient-id': types.uint(right_order_tuple['sender']),
+        'sender-id': types.uint(right_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
   },
 });
+
 Clarinet.test({
   name: 'Exchange - Perp: can match a partial close-out order',
   fn(chain: Chain, accounts: Map<string, Account>) {
@@ -875,7 +866,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const left_order = perpOrderToTupleCV({
+    const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -891,28 +882,12 @@ Clarinet.test({
       timestamp: 1,
       type: 0,
       'linked-hash': '0x',
-    });
+      'linked-maker-data': 1,
+      'linked-taker-data': 13300, // 5% down
+      'linked-stop': 13650e8, // 2.5% down
+    };
 
-    const left_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 2,
-      'maker-asset': 2,
-      'taker-asset': 1,
-      'maker-asset-data': 1,
-      'taker-asset-data': 13300, // 5% down
-      'maximum-fill': 100e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 2,
-      risk: true,
-      stop: 13650e8, // 2.5% down
-      timestamp: 1,
-      type: 0,
-      'linked-hash':
-        '0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e',
-    });
-
-    const right_order = perpOrderToTupleCV({
+    const right_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -928,43 +903,36 @@ Clarinet.test({
       timestamp: 2,
       type: 0,
       'linked-hash': '0x',
-    });
+      'linked-maker-data': 14700,
+      'linked-taker-data': 1,
+      'linked-stop': 14350e8,
+    };
 
-    const right_linked = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 3,
-      'maker-asset': 1,
-      'taker-asset': 2,
-      'maker-asset-data': 14700,
-      'taker-asset-data': 1,
-      'maximum-fill': 50e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 3,
-      risk: true,
-      stop: 14350e8,
-      timestamp: 2,
-      type: 0,
-      'linked-hash':
-        '0x7dd31575a351d31538b0d9559a3f7f8411887058524397d82b07d3b870b9fcdf',
-    });
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
+
+    const left_order_hash =
+      '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec';
+    const right_order_hash =
+      '0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24';
 
     const left_signature =
-      '0xc3d183f2efa646b916f954dede095758fc5ac7cc4c9f1447666df90eb0b8dbf305e7c0ec62fd905a7e66188fe7e5fb814bee94c024781943f37d2bf25505e53700';
-
+      '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
     const right_signature =
-      '0x356799e2cdb405e1fbb9aefb460a055bbc5e7568afc880d21016a4c62a0a7241065565788bc2b694564f89a59a9991f797efc1315db52a344e23a791f0dcabf601';
+      '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
+
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
 
     const block = chain.mineBlock([
       Tx.contractCall(
         contractNames.sender_proxy,
         'match-perp-orders',
         [
-          types.tuple({ parent: left_order, linked: types.some(left_linked) }),
-          types.tuple({
-            parent: right_order,
-            linked: types.some(right_linked),
-          }),
+          left_order,
+          right_order,
           left_signature,
           right_signature,
           types.none(),
@@ -977,9 +945,9 @@ Clarinet.test({
     block.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(order_fill);
 
-    const left_order_2 = perpOrderToTupleCV({
+    const left_order_2_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -994,11 +962,13 @@ Clarinet.test({
       stop: 0,
       timestamp: 2,
       type: 0,
-      'linked-hash':
-        '0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e',
-    });
+      'linked-hash': left_order_hash,
+      'linked-maker-data': 0,
+      'linked-taker-data': 0,
+      'linked-stop': 0,
+    };
 
-    const right_order_2 = perpOrderToTupleCV({
+    const right_order_2_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -1014,53 +984,43 @@ Clarinet.test({
       timestamp: 3,
       type: 0,
       'linked-hash': '0x',
-    });
+      'linked-maker-data': 1,
+      'linked-taker-data': 12967,
+      'linked-stop': 13300e8,
+    };
 
-    const right_linked_2 = perpOrderToTupleCV({
-      sender: 1,
-      'sender-fee': 0.001e8,
-      maker: 3,
-      'maker-asset': 2,
-      'taker-asset': 1,
-      'maker-asset-data': 1,
-      'taker-asset-data': 12967,
-      'maximum-fill': 100e8,
-      'expiration-height': 340282366920938463463374607431768211455n,
-      salt: 4,
-      risk: true,
-      stop: 13300e8,
-      timestamp: 3,
-      type: 0,
-      'linked-hash':
-        '0x2f82e07a614eb092b0ce6d75768f1c94c5ac2b7651c1cd08fe595861d4985fab',
-    });
+    const left_order_2 = perpOrderToTupleCV(left_order_2_tuple);
+    const right_order_2 = perpOrderToTupleCV(right_order_2_tuple);
 
-    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 13650, \"maximum-fill\": 20e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x262f3a7c15a81ce06e8537ef37727ee0fec341240f11d36a0dc4d530884ac63e\" }"
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 13650, \"maximum-fill\": 20e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec\", \"linked-maker-data\": 0,\"linked-taker-data\": 0, \"linked-stop\": 0 }"
     const left_order_hash_2 =
-      '0xa13ee15d91766ccd73928e18ab4142afcb33ce94c56932ef7d5412d8c4049292';
+      '0xb33ad49a5c65ee0ccc5bdbb203e67266a66be3f8b915860f0656b3f64b59537e';
 
-    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 13650, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\" }"
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 13650, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 12967, \"linked-stop\": 13300e8 }"
     const right_order_hash_2 =
-      '0x2f82e07a614eb092b0ce6d75768f1c94c5ac2b7651c1cd08fe595861d4985fab';
+      '0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956';
 
-    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0xa13ee15d91766ccd73928e18ab4142afcb33ce94c56932ef7d5412d8c4049292
+    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0xb33ad49a5c65ee0ccc5bdbb203e67266a66be3f8b915860f0656b3f64b59537e
     const left_signature_2 =
-      '0x83c9ef53f13a816a927841fe8d41fca9d94f3dfe1d08e3c0bd92947445aae7737a09e2b4a8f9f33bafbf28f44e9dfab4d99368c6e1ddf403e5563e7ac52a8d4301';
+      '0x78388323bfe8ff72580b468a7b9fcc747777886a103477d1852f039f22cb0cd65d8d5da29677df47044e4f3aaa2682d8498e3de097b11812363b0b2d5b547f3601';
 
-    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x2f82e07a614eb092b0ce6d75768f1c94c5ac2b7651c1cd08fe595861d4985fab
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956
     const right_signature_2 =
-      '0x16096bdcc62be58d669d1fcf3b30a3eff496751438e675886bf332fc9eaeaa9266048d59576eb4ea6be1b6d712217c8e0bfd22a50a74e55dce0c4edc3a938f9801';
+      '0x7e88ca05e1e2c16a6b89edd80b1a91e01df341c29165ab4ccc221043714598fc44949786dd28e7cdd926a70d5b82cafbdb0762f9c89acdb6a104ed697f43483200';
+
+    const closed_fill = Math.min(
+      order_fill,
+      left_order_2_tuple['maximum-fill'],
+      right_order_2_tuple['maximum-fill'],
+    );
 
     const block_2 = chain.mineBlock([
       Tx.contractCall(
         contractNames.sender_proxy,
         'match-perp-orders',
         [
-          types.tuple({ parent: left_order_2, linked: types.none() }),
-          types.tuple({
-            parent: right_order_2,
-            linked: types.some(right_linked_2),
-          }),
+          left_order_2,
+          right_order_2,
           left_signature_2,
           right_signature_2,
           types.none(),
@@ -1073,15 +1033,21 @@ Clarinet.test({
     block_2.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(20e8);
+      ['fillable'].expectUint(closed_fill);
 
-    // console.log(block_2.receipts[0].events);
     assertEquals(
       block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            closed_fill -
+            (left_order_tuple['maker-asset-data'] -
+              left_order_2_tuple['taker-asset-data']) *
+              closed_fill,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(2),
+        'recipient-id': types.uint(left_order_2_tuple['maker']),
         'sender-id': types.uint(4),
         type: types.ascii('internal_transfer'),
       },
@@ -1089,30 +1055,367 @@ Clarinet.test({
     assertEquals(
       block_2.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(
+          (left_order_2_tuple['taker-asset-data'] *
+            closed_fill *
+            left_order_2_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
+        'recipient-id': types.uint(left_order_2_tuple['sender']),
+        'sender-id': types.uint(left_order_2_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[2].contract_event.value.expectTuple(),
       {
-        amount: types.uint((13650 - 12967) * 20e8),
+        amount: types.uint(
+          (right_order_2_tuple['maker-asset-data'] -
+            right_order_2_tuple['linked-taker-data']) *
+            closed_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
+        'sender-id': types.uint(right_order_2_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[3].contract_event.value.expectTuple(),
       {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(
+          (right_order_2_tuple['maker-asset-data'] *
+            closed_fill *
+            right_order_2_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
+        'recipient-id': types.uint(right_order_2_tuple['sender']),
+        'sender-id': types.uint(right_order_2_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+  },
+});
+
+Clarinet.test({
+  name: 'Exchange - Perp: can match a liquidation order',
+  fn(chain: Chain, accounts: Map<string, Account>) {
+    const sender = accounts.get('wallet_1')!;
+
+    const results = prepareChainBasicTest(chain, accounts);
+    results.receipts.forEach((e: any) => {
+      e.result.expectOk();
+    });
+
+    const left_order_tuple = {
+      sender: 1,
+      'sender-fee': 0.001e8,
+      maker: 2,
+      'maker-asset': 1,
+      'taker-asset': 2,
+      'maker-asset-data': 19292,
+      'taker-asset-data': 1,
+      'maximum-fill': 100e8,
+      'expiration-height': 100,
+      salt: 1,
+      risk: false,
+      stop: 0,
+      timestamp: 1,
+      type: 0,
+      'linked-hash': '0x',
+      'linked-maker-data': 1,
+      'linked-taker-data': 18327, // 5% down
+      'linked-stop': 18810e8, // 2.5% down
+    };
+
+    const right_order_tuple = {
+      sender: 1,
+      'sender-fee': 0.001e8,
+      maker: 3,
+      'maker-asset': 2,
+      'taker-asset': 1,
+      'maker-asset-data': 1,
+      'taker-asset-data': 19292,
+      'maximum-fill': 50e8,
+      'expiration-height': 100,
+      salt: 2,
+      risk: false,
+      stop: 0,
+      timestamp: 2,
+      type: 0,
+      'linked-hash': '0x',
+      'linked-maker-data': 20256,
+      'linked-taker-data': 1,
+      'linked-stop': 19774e8,
+    };
+
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
+
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
+
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 19292, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 18327, \"linked-stop\": 18810e8 }"
+    const left_order_hash =
+      '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07';
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 19292, \"maximum-fill\": 50e8, \"expiration-height\": 100, \"salt\": 2, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 20256,\"linked-taker-data\": 1, \"linked-stop\": 19774e8 }"
+    const right_order_hash =
+      '0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801';
+
+    // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07
+    const left_signature =
+      '0x339330215ec53278e43b7198d77af695945820123eb9ff7faf13f5d9f07fc50066aee36028c02b617378b83481c127f514b0d7744fcef196b898582d967db51500';
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801
+    const right_signature =
+      '0xc0c4468935d23e66b1c007da317b208845d4cd49779e750fb3347486708c29370754b4872532bfff271f3d1c6eb5a66754f0412ffb5c4d317d94ed000e7623ca00';
+
+    const block = chain.mineBlock([
+      Tx.contractCall(
+        contractNames.sender_proxy,
+        'match-perp-orders',
+        [
+          left_order,
+          right_order,
+          left_signature,
+          right_signature,
+          types.none(),
+          types.none(),
+          types.none(),
+        ],
+        sender.address,
+      ),
+    ]);
+    block.receipts[0].result
+      .expectOk()
+      .expectTuple()
+      ['fillable'].expectUint(order_fill);
+
+    assertEquals(
+      block.receipts[0].events[0].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            order_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(left_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[1].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] *
+            order_fill *
+            left_order_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(left_order_tuple['sender']),
+        'sender-id': types.uint(left_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (right_order_tuple['linked-maker-data'] -
+            right_order_tuple['taker-asset-data']) *
+            order_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(right_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[3].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (right_order_tuple['taker-asset-data'] *
+            order_fill *
+            right_order_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(right_order_tuple['sender']),
+        'sender-id': types.uint(right_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+
+    // liquidation
+
+    const liquidation_order_tuple = {
+      sender: left_order_tuple['sender'],
+      'sender-fee': left_order_tuple['sender-fee'],
+      maker: left_order_tuple['maker'],
+      'maker-asset': left_order_tuple['taker-asset'],
+      'taker-asset': left_order_tuple['maker-asset'],
+      'maker-asset-data': left_order_tuple['linked-maker-data'],
+      'taker-asset-data': left_order_tuple['linked-taker-data'],
+      'maximum-fill': left_order_tuple['maximum-fill'],
+      'expiration-height': '340282366920938463463374607431768211455',
+      salt: left_order_tuple['salt'],
+      risk: true,
+      stop: left_order_tuple['linked-stop'],
+      timestamp: left_order_tuple['timestamp'],
+      type: 0,
+      'linked-hash':
+        '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07',
+      'linked-maker-data': 0,
+      'linked-taker-data': 0,
+      'linked-stop': 0,
+    };
+
+    const liquidation_matched_tuple = {
+      sender: 1,
+      'sender-fee': 0.001e8,
+      maker: 3,
+      'maker-asset': 1,
+      'taker-asset': 2,
+      'maker-asset-data': 18327,
+      'taker-asset-data': 1,
+      'maximum-fill': 100e8,
+      'expiration-height': 100,
+      salt: 3,
+      risk: false,
+      stop: 0,
+      timestamp: 3,
+      type: 0,
+      'linked-hash': '0x',
+      'linked-maker-data': 1,
+      'linked-taker-data': 17411,
+      'linked-stop': 17869e8,
+    };
+
+    const liquidation_order = perpOrderToTupleCV(liquidation_order_tuple);
+    const liquidation_matched = perpOrderToTupleCV(liquidation_matched_tuple);
+
+    // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 18327, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 17411, \"linked-stop\": 17869e8 }"
+    const liquidation_matched_hash =
+      '0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94';
+
+    // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94
+    const liquidation_matched_signature =
+      '0x0530b742d41822166b76f52caec87e85d900eaaef18a9e8b1f236588e70df7c506b9f989f9ae968766127f16ff19115c79686b5a33db9b2d314fc8e55eab0a1001';
+
+    // start with liteEvmSignature.
+    // the signature = Buffer.from(liteSignatureToStacksSignature(`${liteEvmSignature}`)).toString('hex')
+    const oracle_signature =
+      '0x71b534851bcd7584e7743043917606968cfc571c45e765d088aa07c2347b2c7918506ee6002b4014514523494367232c334d22a25167fcf8682a1f79ada700db01';
+
+    const pricePackage: PricePackage = {
+      timestamp: 1662540506183,
+      prices: [
+        {
+          symbol: 'BTC',
+          value: 18805.300000000003,
+        },
+      ],
+    };
+
+    const liquidated_fill = Math.min(
+      order_fill,
+      liquidation_order_tuple['maximum-fill'],
+      liquidation_matched_tuple['maximum-fill'],
+    );
+
+    const block_2 = chain.mineBlock([
+      Tx.contractCall(
+        contractNames.sender_proxy,
+        'match-perp-orders',
+        [
+          liquidation_matched,
+          liquidation_order,
+          liquidation_matched_signature,
+          '0x',
+          types.none(),
+          types.some(
+            types.tuple({
+              timestamp: types.uint(pricePackage.timestamp),
+              value: types.uint(shiftPriceValue(pricePackage.prices[0].value)),
+              signature: oracle_signature,
+            }),
+          ),
+          types.none(),
+        ],
+        sender.address,
+      ),
+    ]);
+    block_2.receipts[0].result
+      .expectOk()
+      .expectTuple()
+      ['fillable'].expectUint(liquidated_fill);
+
+    // console.log(block_2.receipts[0].events);
+    assertEquals(
+      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            liquidated_fill -
+            (left_order_tuple['maker-asset-data'] -
+              liquidation_order_tuple['taker-asset-data']) *
+              liquidated_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(liquidation_order_tuple['maker']),
+        'sender-id': types.uint(4),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (liquidation_order_tuple['taker-asset-data'] *
+            liquidated_fill *
+            liquidation_order_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(liquidation_order_tuple['sender']),
+        'sender-id': types.uint(liquidation_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[0].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (liquidation_matched_tuple['maker-asset-data'] -
+            liquidation_matched_tuple['linked-taker-data']) *
+            liquidated_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(liquidation_matched_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block_2.receipts[0].events[1].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (liquidation_matched_tuple['maker-asset-data'] *
+            liquidated_fill *
+            liquidation_matched_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(liquidation_matched_tuple['sender']),
+        'sender-id': types.uint(liquidation_matched_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
