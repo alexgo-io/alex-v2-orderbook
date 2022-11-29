@@ -719,7 +719,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const left_order = perpOrderToTupleCV({
+    const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -738,9 +738,9 @@ Clarinet.test({
       'linked-maker-data': 1,
       'linked-taker-data': 13300, // 5% down
       'linked-stop': 13650e8, // 2.5% down
-    });
+    };
 
-    const right_order = perpOrderToTupleCV({
+    const right_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -759,12 +759,20 @@ Clarinet.test({
       'linked-maker-data': 14700,
       'linked-taker-data': 1,
       'linked-stop': 14350e8,
-    });
+    };
+
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
 
     const left_signature =
       '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
     const right_signature =
       '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
+
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
 
     const block = chain.mineBlock([
       Tx.contractCall(
@@ -785,50 +793,69 @@ Clarinet.test({
     block.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(order_fill);
 
     assertEquals(
       block.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14000 - 13300) * 50e8),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            order_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(2),
+        'sender-id': types.uint(left_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(14000 * 50e8 * 0.001),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] *
+            order_fill *
+            left_order_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
+        'recipient-id': types.uint(left_order_tuple['sender']),
+        'sender-id': types.uint(left_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[2].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14700 - 14000) * 50e8),
+        amount: types.uint(
+          (right_order_tuple['linked-maker-data'] -
+            right_order_tuple['taker-asset-data']) *
+            order_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
+        'sender-id': types.uint(right_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block.receipts[0].events[3].contract_event.value.expectTuple(),
       {
-        amount: types.uint(14000 * 50e8 * 0.001),
+        amount: types.uint(
+          (right_order_tuple['taker-asset-data'] *
+            order_fill *
+            right_order_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
+        'recipient-id': types.uint(right_order_tuple['sender']),
+        'sender-id': types.uint(right_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
   },
 });
+
 Clarinet.test({
   name: 'Exchange - Perp: can match a partial close-out order',
   fn(chain: Chain, accounts: Map<string, Account>) {
@@ -839,7 +866,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const left_order = perpOrderToTupleCV({
+    const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -858,9 +885,9 @@ Clarinet.test({
       'linked-maker-data': 1,
       'linked-taker-data': 13300, // 5% down
       'linked-stop': 13650e8, // 2.5% down
-    });
+    };
 
-    const right_order = perpOrderToTupleCV({
+    const right_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -879,7 +906,10 @@ Clarinet.test({
       'linked-maker-data': 14700,
       'linked-taker-data': 1,
       'linked-stop': 14350e8,
-    });
+    };
+
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
 
     const left_order_hash =
       '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec';
@@ -891,6 +921,11 @@ Clarinet.test({
     const right_signature =
       '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
 
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
+
     const block = chain.mineBlock([
       Tx.contractCall(
         contractNames.sender_proxy,
@@ -910,9 +945,9 @@ Clarinet.test({
     block.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(order_fill);
 
-    const left_order_2 = perpOrderToTupleCV({
+    const left_order_2_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -931,9 +966,9 @@ Clarinet.test({
       'linked-maker-data': 0,
       'linked-taker-data': 0,
       'linked-stop': 0,
-    });
+    };
 
-    const right_order_2 = perpOrderToTupleCV({
+    const right_order_2_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -952,7 +987,10 @@ Clarinet.test({
       'linked-maker-data': 1,
       'linked-taker-data': 12967,
       'linked-stop': 13300e8,
-    });
+    };
+
+    const left_order_2 = perpOrderToTupleCV(left_order_2_tuple);
+    const right_order_2 = perpOrderToTupleCV(right_order_2_tuple);
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 13650, \"maximum-fill\": 20e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec\", \"linked-maker-data\": 0,\"linked-taker-data\": 0, \"linked-stop\": 0 }"
     const left_order_hash_2 =
@@ -969,6 +1007,12 @@ Clarinet.test({
     // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956
     const right_signature_2 =
       '0x7e88ca05e1e2c16a6b89edd80b1a91e01df341c29165ab4ccc221043714598fc44949786dd28e7cdd926a70d5b82cafbdb0762f9c89acdb6a104ed697f43483200';
+
+    const closed_fill = Math.min(
+      order_fill,
+      left_order_2_tuple['maximum-fill'],
+      right_order_2_tuple['maximum-fill'],
+    );
 
     const block_2 = chain.mineBlock([
       Tx.contractCall(
@@ -989,15 +1033,21 @@ Clarinet.test({
     block_2.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(20e8);
+      ['fillable'].expectUint(closed_fill);
 
-    // console.log(block_2.receipts[0].events);
     assertEquals(
       block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            closed_fill -
+            (left_order_tuple['maker-asset-data'] -
+              left_order_2_tuple['taker-asset-data']) *
+              closed_fill,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(2),
+        'recipient-id': types.uint(left_order_2_tuple['maker']),
         'sender-id': types.uint(4),
         type: types.ascii('internal_transfer'),
       },
@@ -1005,30 +1055,44 @@ Clarinet.test({
     assertEquals(
       block_2.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(
+          (left_order_2_tuple['taker-asset-data'] *
+            closed_fill *
+            left_order_2_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
+        'recipient-id': types.uint(left_order_2_tuple['sender']),
+        'sender-id': types.uint(left_order_2_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[2].contract_event.value.expectTuple(),
       {
-        amount: types.uint((13650 - 12967) * 20e8),
+        amount: types.uint(
+          (right_order_2_tuple['maker-asset-data'] -
+            right_order_2_tuple['linked-taker-data']) *
+            closed_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
+        'sender-id': types.uint(right_order_2_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[3].contract_event.value.expectTuple(),
       {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(
+          (right_order_2_tuple['maker-asset-data'] *
+            closed_fill *
+            right_order_2_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
+        'recipient-id': types.uint(right_order_2_tuple['sender']),
+        'sender-id': types.uint(right_order_2_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
@@ -1045,7 +1109,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const initiating_order = {
+    const left_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -1066,9 +1130,7 @@ Clarinet.test({
       'linked-stop': 18810e8, // 2.5% down
     };
 
-    const left_order = perpOrderToTupleCV(initiating_order);
-
-    const right_order = perpOrderToTupleCV({
+    const right_order_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -1087,7 +1149,15 @@ Clarinet.test({
       'linked-maker-data': 20256,
       'linked-taker-data': 1,
       'linked-stop': 19774e8,
-    });
+    };
+
+    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const right_order = perpOrderToTupleCV(right_order_tuple);
+
+    const order_fill = Math.min(
+      left_order_tuple['maximum-fill'],
+      right_order_tuple['maximum-fill'],
+    );
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 19292, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 18327, \"linked-stop\": 18810e8 }"
     const left_order_hash =
@@ -1122,33 +1192,92 @@ Clarinet.test({
     block.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(order_fill);
+
+    assertEquals(
+      block.receipts[0].events[0].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            order_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(left_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[1].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] *
+            order_fill *
+            left_order_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(left_order_tuple['sender']),
+        'sender-id': types.uint(left_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[2].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (right_order_tuple['linked-maker-data'] -
+            right_order_tuple['taker-asset-data']) *
+            order_fill,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(4),
+        'sender-id': types.uint(right_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
+    assertEquals(
+      block.receipts[0].events[3].contract_event.value.expectTuple(),
+      {
+        amount: types.uint(
+          (right_order_tuple['taker-asset-data'] *
+            order_fill *
+            right_order_tuple['sender-fee']) /
+            1e8,
+        ),
+        'asset-id': types.uint(1),
+        'recipient-id': types.uint(right_order_tuple['sender']),
+        'sender-id': types.uint(right_order_tuple['maker']),
+        type: types.ascii('internal_transfer'),
+      },
+    );
 
     // liquidation
 
-    const liquidation_order = perpOrderToTupleCV({
-      sender: initiating_order['sender'],
-      'sender-fee': initiating_order['sender-fee'],
-      maker: initiating_order['maker'],
-      'maker-asset': initiating_order['taker-asset'],
-      'taker-asset': initiating_order['maker-asset'],
-      'maker-asset-data': initiating_order['linked-maker-data'],
-      'taker-asset-data': initiating_order['linked-taker-data'],
-      'maximum-fill': initiating_order['maximum-fill'],
+    const liquidation_order_tuple = {
+      sender: left_order_tuple['sender'],
+      'sender-fee': left_order_tuple['sender-fee'],
+      maker: left_order_tuple['maker'],
+      'maker-asset': left_order_tuple['taker-asset'],
+      'taker-asset': left_order_tuple['maker-asset'],
+      'maker-asset-data': left_order_tuple['linked-maker-data'],
+      'taker-asset-data': left_order_tuple['linked-taker-data'],
+      'maximum-fill': left_order_tuple['maximum-fill'],
       'expiration-height': '340282366920938463463374607431768211455',
-      salt: initiating_order['salt'],
+      salt: left_order_tuple['salt'],
       risk: true,
-      stop: initiating_order['linked-stop'],
-      timestamp: initiating_order['timestamp'],
+      stop: left_order_tuple['linked-stop'],
+      timestamp: left_order_tuple['timestamp'],
       type: 0,
       'linked-hash':
         '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07',
       'linked-maker-data': 0,
       'linked-taker-data': 0,
       'linked-stop': 0,
-    });
+    };
 
-    const liquidation_matched = perpOrderToTupleCV({
+    const liquidation_matched_tuple = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -1167,7 +1296,10 @@ Clarinet.test({
       'linked-maker-data': 1,
       'linked-taker-data': 17411,
       'linked-stop': 17869e8,
-    });
+    };
+
+    const liquidation_order = perpOrderToTupleCV(liquidation_order_tuple);
+    const liquidation_matched = perpOrderToTupleCV(liquidation_matched_tuple);
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 18327, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 17411, \"linked-stop\": 17869e8 }"
     const liquidation_matched_hash =
@@ -1191,6 +1323,12 @@ Clarinet.test({
         },
       ],
     };
+
+    const liquidated_fill = Math.min(
+      order_fill,
+      liquidation_order_tuple['maximum-fill'],
+      liquidation_matched_tuple['maximum-fill'],
+    );
 
     const block_2 = chain.mineBlock([
       Tx.contractCall(
@@ -1217,15 +1355,22 @@ Clarinet.test({
     block_2.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(50e8);
+      ['fillable'].expectUint(liquidated_fill);
 
-    console.log(block_2.receipts[0].events);
+    // console.log(block_2.receipts[0].events);
     assertEquals(
       block_2.receipts[0].events[2].contract_event.value.expectTuple(),
       {
-        amount: types.uint((19292 - 18327) * 50e8 - (19292 - 18327) * 50e8),
+        amount: types.uint(
+          (left_order_tuple['maker-asset-data'] -
+            left_order_tuple['linked-taker-data']) *
+            liquidated_fill -
+            (left_order_tuple['maker-asset-data'] -
+              liquidation_order_tuple['taker-asset-data']) *
+              liquidated_fill,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(2),
+        'recipient-id': types.uint(liquidation_order_tuple['maker']),
         'sender-id': types.uint(4),
         type: types.ascii('internal_transfer'),
       },
@@ -1234,31 +1379,43 @@ Clarinet.test({
       block_2.receipts[0].events[3].contract_event.value.expectTuple(),
       {
         amount: types.uint(
-          initiating_order['linked-maker-data'] * 50e8 * 0.001,
+          (liquidation_order_tuple['taker-asset-data'] *
+            liquidated_fill *
+            liquidation_order_tuple['sender-fee']) /
+            1e8,
         ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(2),
+        'recipient-id': types.uint(liquidation_order_tuple['sender']),
+        'sender-id': types.uint(liquidation_order_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((18327 - 17411) * 50e8),
+        amount: types.uint(
+          (liquidation_matched_tuple['maker-asset-data'] -
+            liquidation_matched_tuple['linked-taker-data']) *
+            liquidated_fill,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
-        'sender-id': types.uint(3),
+        'sender-id': types.uint(liquidation_matched_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
     assertEquals(
       block_2.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(18327 * 50e8 * 0.001),
+        amount: types.uint(
+          (liquidation_matched_tuple['maker-asset-data'] *
+            liquidated_fill *
+            liquidation_matched_tuple['sender-fee']) /
+            1e8,
+        ),
         'asset-id': types.uint(1),
-        'recipient-id': types.uint(1),
-        'sender-id': types.uint(3),
+        'recipient-id': types.uint(liquidation_matched_tuple['sender']),
+        'sender-id': types.uint(liquidation_matched_tuple['maker']),
         type: types.ascii('internal_transfer'),
       },
     );
