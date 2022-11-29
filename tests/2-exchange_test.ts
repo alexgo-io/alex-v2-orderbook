@@ -1045,7 +1045,7 @@ Clarinet.test({
       e.result.expectOk();
     });
 
-    const left_order_tuple = {
+    const initiating_order = {
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 2,
@@ -1066,7 +1066,7 @@ Clarinet.test({
       'linked-stop': 18810e8, // 2.5% down
     };
 
-    const left_order = perpOrderToTupleCV(left_order_tuple);
+    const left_order = perpOrderToTupleCV(initiating_order);
 
     const right_order = perpOrderToTupleCV({
       sender: 1,
@@ -1126,20 +1126,20 @@ Clarinet.test({
 
     // liquidation
 
-    const left_linked = perpOrderToTupleCV({
-      sender: left_order_tuple['sender'],
-      'sender-fee': left_order_tuple['sender-fee'],
-      maker: left_order_tuple['maker'],
-      'maker-asset': left_order_tuple['taker-asset'],
-      'taker-asset': left_order_tuple['maker-asset'],
-      'maker-asset-data': left_order_tuple['linked-maker-data'],
-      'taker-asset-data': left_order_tuple['linked-taker-data'],
-      'maximum-fill': left_order_tuple['maximum-fill'],
+    const liquidation_order = perpOrderToTupleCV({
+      sender: initiating_order['sender'],
+      'sender-fee': initiating_order['sender-fee'],
+      maker: initiating_order['maker'],
+      'maker-asset': initiating_order['taker-asset'],
+      'taker-asset': initiating_order['maker-asset'],
+      'maker-asset-data': initiating_order['linked-maker-data'],
+      'taker-asset-data': initiating_order['linked-taker-data'],
+      'maximum-fill': initiating_order['maximum-fill'],
       'expiration-height': '340282366920938463463374607431768211455',
-      salt: left_order_tuple['salt'],
+      salt: initiating_order['salt'],
       risk: true,
-      stop: left_order_tuple['linked-stop'],
-      timestamp: left_order_tuple['timestamp'],
+      stop: initiating_order['linked-stop'],
+      timestamp: initiating_order['timestamp'],
       type: 0,
       'linked-hash':
         '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07',
@@ -1148,7 +1148,7 @@ Clarinet.test({
       'linked-stop': 0,
     });
 
-    const right_order_2 = perpOrderToTupleCV({
+    const liquidation_matched = perpOrderToTupleCV({
       sender: 1,
       'sender-fee': 0.001e8,
       maker: 3,
@@ -1170,11 +1170,11 @@ Clarinet.test({
     });
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 18327, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 17411, \"linked-stop\": 17869e8 }"
-    const right_order_hash_2 =
+    const liquidation_matched_hash =
       '0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94';
 
     // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94
-    const right_signature_2 =
+    const liquidation_matched_signature =
       '0x0530b742d41822166b76f52caec87e85d900eaaef18a9e8b1f236588e70df7c506b9f989f9ae968766127f16ff19115c79686b5a33db9b2d314fc8e55eab0a1001';
 
     // start with liteEvmSignature.
@@ -1197,10 +1197,11 @@ Clarinet.test({
         contractNames.sender_proxy,
         'match-perp-orders',
         [
-          left_linked,
-          right_order_2,
+          liquidation_matched,
+          liquidation_order,
+          liquidation_matched_signature,
           '0x',
-          right_signature_2,
+          types.none(),
           types.some(
             types.tuple({
               timestamp: types.uint(pricePackage.timestamp),
@@ -1209,7 +1210,6 @@ Clarinet.test({
             }),
           ),
           types.none(),
-          types.none(),
         ],
         sender.address,
       ),
@@ -1217,23 +1217,25 @@ Clarinet.test({
     block_2.receipts[0].result
       .expectOk()
       .expectTuple()
-      ['fillable'].expectUint(20e8);
+      ['fillable'].expectUint(50e8);
 
-    // console.log(block_2.receipts[0].events);
+    console.log(block_2.receipts[0].events);
+    // assertEquals(
+    //   block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+    //   {
+    //     amount: types.uint((19292 - 18327) * 50e8 - (19292 - 18327) * 50e8),
+    //     'asset-id': types.uint(1),
+    //     'recipient-id': types.uint(2),
+    //     'sender-id': types.uint(4),
+    //     type: types.ascii('internal_transfer'),
+    //   },
+    // );
     assertEquals(
-      block_2.receipts[0].events[0].contract_event.value.expectTuple(),
+      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
       {
-        amount: types.uint((14000 - 13300) * 20e8 - (14000 - 13650) * 20e8),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(2),
-        'sender-id': types.uint(4),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block_2.receipts[0].events[1].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(
+          initiating_order['linked-taker-data'] * 50e8 * 0.001,
+        ),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(1),
         'sender-id': types.uint(2),
@@ -1241,9 +1243,9 @@ Clarinet.test({
       },
     );
     assertEquals(
-      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+      block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint((13650 - 12967) * 20e8),
+        amount: types.uint((18327 - 17411) * 50e8),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(4),
         'sender-id': types.uint(3),
@@ -1251,9 +1253,9 @@ Clarinet.test({
       },
     );
     assertEquals(
-      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
+      block_2.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(13650 * 20e8 * 0.001),
+        amount: types.uint(18327 * 50e8 * 0.001),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(1),
         'sender-id': types.uint(3),
