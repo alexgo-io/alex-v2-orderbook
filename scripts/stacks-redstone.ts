@@ -24,7 +24,14 @@ import {
   compressPublicKey,
   serializePublicKey,
 } from 'micro-stacks/transactions';
-import { PricePackage, ShortSinglePrice } from 'redstone-node/dist/src/types';
+export interface ShortSinglePrice {
+  symbol: string;
+  value: any;
+}
+export interface PricePackage {
+  prices: ShortSinglePrice[];
+  timestamp: number;
+}
 
 // Buffer of "\x19Ethereum Signed Message:\n32"
 export const ethPersonalSignPrefix = new Uint8Array([

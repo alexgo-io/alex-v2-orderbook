@@ -1,7 +1,7 @@
+// deno-lint-ignore-file no-explicit-any
 import {
   Account,
   assertEquals,
-  cancelToTupleCV,
   Chain,
   Clarinet,
   contractNames,
@@ -109,7 +109,7 @@ Clarinet.test({
     const right_signature =
       '0x5e3c2e1f8d414b3abef2891a9198fe278534a648e2e01d92af4c52b381cfe4b5756fd6a7e6111110bf6995463a73ab055863d9e131de34cb9a467c73918bb49600';
 
-    let response = chain.callReadOnlyFn(
+    const response = chain.callReadOnlyFn(
       contractNames.exchange,
       'validate-match',
       [
@@ -123,7 +123,7 @@ Clarinet.test({
       ],
       sender.address,
     );
-    let response_tuple = response.result.expectOk().expectTuple();
+    const response_tuple = response.result.expectOk().expectTuple();
     assertEquals(response_tuple, {
       fillable: types.uint(50),
       'left-order-fill': types.uint(0),
@@ -208,7 +208,7 @@ Clarinet.test({
       '0x4502a389f870dab8b80a00522540a3d4bf9b9cb1a09246caf70d93a1c1d5c9ac';
     assertEquals(response.result, order_hash);
 
-    const cancel_order = cancelToTupleCV({ hash: order_hash, cancel: true });
+    // const cancel_order = cancelToTupleCV({ hash: order_hash, cancel: true });
     const response_cancel = chain.callReadOnlyFn(
       contractNames.exchange,
       'hash-cancel-order',
@@ -408,7 +408,7 @@ Clarinet.test({
     const right_signature =
       '0x56664d2146c2ad1819acfcf241e5950a92bd44c5b37b8d2596800f000f3cc99129f3b06eab5ab5e4b97ca1a362d27e1a8fbb519ef889ae0f95f4206f516dfbb901';
 
-    let response = chain.callReadOnlyFn(
+    const response = chain.callReadOnlyFn(
       contractNames.perpetual,
       'validate-match',
       [
@@ -423,7 +423,7 @@ Clarinet.test({
       sender.address,
     );
     // console.log(response.result);
-    let response_tuple = response.result.expectOk().expectTuple();
+    const response_tuple = response.result.expectOk().expectTuple();
     assertEquals(response_tuple, {
       'left-buy': types.bool(true),
       fillable: types.uint(50e8),

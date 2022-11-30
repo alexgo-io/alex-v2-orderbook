@@ -22,8 +22,9 @@ Wallet.restore('', process.argv[2], ChainID.Testnet).then(wallet => {
   console.log(
     'Testnet address: ' + signer.getSTXAddress(TransactionVersion.Testnet),
   );
+  const pubkey = pubKeyfromPrivKey(signer.getSTXPrivateKey()).data;
   console.log(
     'Public key:      ' +
-      pubKeyfromPrivKey(signer.getSTXPrivateKey()).data.toString('hex'),
+      Buffer.from(pubkey, pubkey.byteOffset, pubkey.byteLength).toString('hex'),
   );
 });

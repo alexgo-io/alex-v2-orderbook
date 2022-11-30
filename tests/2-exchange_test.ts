@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import {
   Account,
   assertEquals,
@@ -913,8 +914,8 @@ Clarinet.test({
 
     const left_order_hash =
       '0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec';
-    const right_order_hash =
-      '0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24';
+    // const right_order_hash =
+    //   '0xa20b772c3337141e4a9808709e5a16a91647c3a00151c04b8773f2d3143acb24';
 
     const left_signature =
       '0xfa4d6088c45e08b69f7423fadc1dcdc512d9fb807da26c4d7b46c53d0bd078d1217e0318eba3a16d75ff932048733f130067e9ae68dc2d0d0d3b0b1dc1e2a8d200';
@@ -993,12 +994,12 @@ Clarinet.test({
     const right_order_2 = perpOrderToTupleCV(right_order_2_tuple);
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 13650, \"maximum-fill\": 20e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x06f59c338a001e4a5cf46456e2f0bc9aeb957030c52899c44bc51535112e0fec\", \"linked-maker-data\": 0,\"linked-taker-data\": 0, \"linked-stop\": 0 }"
-    const left_order_hash_2 =
-      '0xb33ad49a5c65ee0ccc5bdbb203e67266a66be3f8b915860f0656b3f64b59537e';
+    // const left_order_hash_2 =
+    //   '0xb33ad49a5c65ee0ccc5bdbb203e67266a66be3f8b915860f0656b3f64b59537e';
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 13650, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 12967, \"linked-stop\": 13300e8 }"
-    const right_order_hash_2 =
-      '0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956';
+    // const right_order_hash_2 =
+    //   '0x8fb0e0600d591372bc99373e20eb390264818000a059b0df4f94081cd1842956';
 
     // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0xb33ad49a5c65ee0ccc5bdbb203e67266a66be3f8b915860f0656b3f64b59537e
     const left_signature_2 =
@@ -1160,11 +1161,11 @@ Clarinet.test({
     );
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 2, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 19292, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 1, \"risk\": false, \"stop\": 0, \"timestamp\": 1, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 18327, \"linked-stop\": 18810e8 }"
-    const left_order_hash =
-      '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07';
+    // const left_order_hash =
+    //   '0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07';
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 2, \"taker-asset\": 1, \"maker-asset-data\": 1, \"taker-asset-data\": 19292, \"maximum-fill\": 50e8, \"expiration-height\": 100, \"salt\": 2, \"risk\": false, \"stop\": 0, \"timestamp\": 2, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 20256,\"linked-taker-data\": 1, \"linked-stop\": 19774e8 }"
-    const right_order_hash =
-      '0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801';
+    // const right_order_hash =
+    //   '0xa1a75fe60c955a96d66eb803d5b362b318ec6501e370fddeb84b41fa45706801';
 
     // yarn sign-order-hash 530d9f61984c888536871c6573073bdfc0058896dc1adfe9a6a10dfacadc209101 0x2a2f10c29965ccb817b1b3738042cadc765b3da4aef6f9c3ed14f31309bb4a07
     const left_signature =
@@ -1302,8 +1303,8 @@ Clarinet.test({
     const liquidation_matched = perpOrderToTupleCV(liquidation_matched_tuple);
 
     // yarn generate-perpetual-hash "{ \"sender\": 1, \"sender-fee\": 0.001e8, \"maker\": 3, \"maker-asset\": 1, \"taker-asset\": 2, \"maker-asset-data\": 18327, \"taker-asset-data\": 1, \"maximum-fill\": 100e8, \"expiration-height\": 100, \"salt\": 3, \"risk\": false, \"stop\": 0, \"timestamp\": 3, \"type\": 0, \"linked-hash\": \"0x\", \"linked-maker-data\": 1,\"linked-taker-data\": 17411, \"linked-stop\": 17869e8 }"
-    const liquidation_matched_hash =
-      '0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94';
+    // const liquidation_matched_hash =
+    //   '0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94';
 
     // yarn sign-order-hash d655b2523bcd65e34889725c73064feb17ceb796831c0e111ba1a552b0f31b3901 0x45a5bc9b6144edec2045388478fab509c585cdccde8391ee42de1778b3927e94
     const liquidation_matched_signature =

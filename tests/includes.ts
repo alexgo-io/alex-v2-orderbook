@@ -1,11 +1,12 @@
+// deno-lint-ignore-file no-explicit-any ban-types
 import {
   Account,
   Chain,
   Clarinet,
   Tx,
   types,
-} from 'https://deno.land/x/clarinet@v0.31.1/index.ts';
-export { assertEquals } from 'https://deno.land/std@0.113.0/testing/asserts.ts';
+} from 'https://deno.land/x/clarinet@v0.34.0/index.ts';
+export { assertEquals } from 'https://deno.land/std@0.166.0/testing/asserts.ts';
 export { Clarinet, Tx, Chain, types };
 export type { Account };
 export { contractNames };
@@ -363,7 +364,7 @@ export function shiftPriceValue(value: number) {
 }
 
 export function stringToUint8Array(input: string) {
-  let codePoints: number[] = [];
+  const codePoints: number[] = [];
   for (let i = 0; i < input.length; ++i) codePoints.push(input.charCodeAt(i));
   return new Uint8Array(codePoints);
 }
