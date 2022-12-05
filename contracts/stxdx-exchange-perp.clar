@@ -547,7 +547,10 @@
 				(asserts! (is-eq (get maker-asset left-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
 				(asserts! (is-eq (get taker-asset left-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
 				;; numeraire must be the same
-				(asserts! (is-eq (get maker-asset-data left-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)
+				(if left-buy
+					(asserts! (is-eq (get taker-asset-data left-order) (get maker-asset-data linked-order)) err-asset-data-mismatch)
+					(asserts! (is-eq (get maker-asset-data left-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)
+				)
 			)
 		)
 		(if (is-eq (len (get linked-hash right-order)) u0)
@@ -589,7 +592,10 @@
 				(asserts! (is-eq (get maker-asset right-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
 				(asserts! (is-eq (get taker-asset right-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
 				;; numeraire must be the same
-				(asserts! (is-eq (get maker-asset-data right-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)			
+				(if right-buy
+					(asserts! (is-eq (get taker-asset-data right-order) (get maker-asset-data linked-order)) err-asset-data-mismatch)			
+					(asserts! (is-eq (get maker-asset-data right-order) (get taker-asset-data linked-order)) err-asset-data-mismatch)			
+				)
 			)
 		)		
 
