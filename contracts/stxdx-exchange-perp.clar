@@ -71,7 +71,8 @@
 		taker-asset: uint, 
 		maker-asset-data: uint, 
 		taker-asset-data: uint,
-		margin-per-fill: uint
+		margin-per-fill: uint,
+		filled: uint
 	}
 )
 
@@ -385,8 +386,8 @@
 			(right-order-fill (get order-2 order-fills))
 			;; the linked order can be filled only up to the fill of the initiating order, 
 			;; which may be smaller than maximum-fill of the initiating order, or that of the linked order			
-			(left-linked-filled (if (is-some (map-get? positions (get linked-hash left-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash left-order)) MAX_UINT))
-			(right-linked-filled (if (is-some (map-get? positions (get linked-hash right-order))) (contract-call? .stxdx-registry get-order-fill (get linked-hash right-order)) MAX_UINT))
+			(left-linked-filled (match (map-get? positions (get linked-hash left-order)) position (get filled position) MAX_UINT))
+			(right-linked-filled (match (map-get? positions (get linked-hash right-order)) position (get filled position) MAX_UINT))
 			(fillable (min (- (min left-linked-filled (get maximum-fill left-order)) left-order-fill) (- (min right-linked-filled (get maximum-fill right-order)) right-order-fill)))		
 			(left-buy (is-some (map-get? oracle-symbols (get taker-asset left-order))))
 			(right-buy (not left-buy))
@@ -689,7 +690,7 @@
 			 	(
 					(asset-id (if left-buy (get maker-asset left-order) (get taker-asset left-order)))
 					(make-per-fill (if left-buy left-order-make right-order-make))
-					(margin-per-fill (if left-buy (- left-order-make (get linked-taker-data left-order)) (- (get linked-maker-data left-order) right-order-make)))
+					(margin-per-fill (if left-buy (- (get maker-asset-data left-order) (get linked-taker-data left-order)) (- (get linked-maker-data left-order) (get taker-asset-data left-order))))
 					(linked-order
 						{
 							sender: (get sender left-order),
@@ -714,17 +715,35 @@
 					)
 				)
 				(map-set linked-orders (hash-order linked-order) true)
-				(map-set 
-					positions
-					(get left-order-hash validation-data) 
-					{ 
-						maker: (get maker left-order), 
-						maker-asset: (get maker-asset left-order),
-						taker-asset: (get taker-asset left-order),
-						maker-asset-data: left-order-make, 
-						taker-asset-data: (get taker-asset-data left-order),
-						margin-per-fill: margin-per-fill 
-					}
+				(match (map-get? positions (get left-order-hash validation-data))
+					position 
+					(map-set 
+						positions
+						(get left-order-hash validation-data) 
+						{ 
+							maker: (get maker left-order), 
+							maker-asset: (get maker-asset left-order),
+							taker-asset: (get taker-asset left-order),
+							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)), 
+							taker-asset-data: (get taker-asset-data left-order),
+							margin-per-fill: margin-per-fill,
+							filled: (+ (get filled position) fillable)
+						}	
+					)
+					(map-set 
+						positions
+						(get left-order-hash validation-data) 
+						{ 
+							maker: (get maker left-order), 
+							maker-asset: (get maker-asset left-order),
+							taker-asset: (get taker-asset left-order),
+							maker-asset-data: left-order-make, 
+							taker-asset-data: (get taker-asset-data left-order),
+							margin-per-fill: margin-per-fill,
+							filled: fillable
+							
+						}
+					)
 				)
 				;; when adding position, you pay initial margin to exchange
 				(try! (settle-to-exchange (get maker left-order) (get sender left-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee left-order) (* fillable make-per-fill))))				
@@ -764,7 +783,7 @@
 			 	(
 					(asset-id (if right-buy (get maker-asset right-order) (get taker-asset right-order)))
 					(make-per-fill (if right-buy right-order-make left-order-make))
-					(margin-per-fill (if right-buy (- right-order-make (get linked-taker-data right-order)) (- (get linked-maker-data right-order) left-order-make)))
+					(margin-per-fill (if right-buy (- (get maker-asset-data right-order) (get linked-taker-data right-order)) (- (get linked-maker-data right-order) (get taker-asset-data right-order))))
 					(linked-order
 						{
 							sender: (get sender right-order),
@@ -789,18 +808,35 @@
 					)
 				)
 				(map-set linked-orders (hash-order linked-order) true)
-				(map-set 
-					positions
-					(get right-order-hash validation-data) 
-					{ 
-						maker: (get maker right-order), 
-						maker-asset: (get maker-asset right-order),
-						taker-asset: (get taker-asset right-order),
-						maker-asset-data: right-order-make, 
-						taker-asset-data: (get taker-asset-data right-order),
-						margin-per-fill: margin-per-fill 
-					}
-				)
+				(match (map-get? positions (get right-order-hash validation-data))
+					position 
+					(map-set 
+						positions
+						(get right-order-hash validation-data) 
+						{ 
+							maker: (get maker right-order), 
+							maker-asset: (get maker-asset right-order),
+							taker-asset: (get taker-asset right-order),
+							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)), 
+							taker-asset-data: (get taker-asset-data right-order),
+							margin-per-fill: margin-per-fill,
+							filled: (+ (get filled position) fillable)
+						}	
+					)
+					(map-set 
+						positions
+						(get right-order-hash validation-data) 
+						{ 
+							maker: (get maker right-order), 
+							maker-asset: (get maker-asset right-order),
+							taker-asset: (get taker-asset right-order),
+							maker-asset-data: right-order-make, 
+							taker-asset-data: (get taker-asset-data right-order),
+							margin-per-fill: margin-per-fill,
+							filled: fillable
+						}
+					)
+				)				
 				;; when adding position, you pay initial margin to exchange
 				(try! (settle-to-exchange (get maker right-order) (get sender right-order) asset-id (* fillable margin-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))))				
 			)
