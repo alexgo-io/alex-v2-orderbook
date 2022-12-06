@@ -471,8 +471,8 @@
 			left-order-fill: left-order-fill,
 			right-order-fill: right-order-fill,
 			fillable: fillable,
-			left-order-make: (get maker-asset-data left-order),
-			right-order-make: (get taker-asset-data left-order),
+			left-order-make: (get maker-asset-data left-order), ;; execution is always done at left order's price
+			right-order-make: (get taker-asset-data left-order), ;; execution is always done at left order's price
 			}
 		)
 	)

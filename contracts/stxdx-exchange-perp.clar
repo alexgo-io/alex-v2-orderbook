@@ -603,8 +603,8 @@
 			left-order-fill: left-order-fill,
 			right-order-fill: right-order-fill,
 			fillable: fillable,
-			left-order-make: (get maker-asset-data left-order),
-			right-order-make: (get taker-asset-data left-order),
+			left-order-make: (get maker-asset-data left-order), ;; execution is always done at left order's price
+			right-order-make: (get taker-asset-data left-order), ;; execution is always done at left order's price
 			left-buy: left-buy
 			}
 		)
@@ -725,7 +725,7 @@
 							maker-asset: (get maker-asset left-order),
 							taker-asset: (get taker-asset left-order),
 							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)), 
-							taker-asset-data: (get taker-asset-data left-order),
+							taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)),
 							margin-per-fill: margin-per-fill,
 							filled: (+ (get filled position) fillable)
 						}	
@@ -738,7 +738,7 @@
 							maker-asset: (get maker-asset left-order),
 							taker-asset: (get taker-asset left-order),
 							maker-asset-data: left-order-make, 
-							taker-asset-data: (get taker-asset-data left-order),
+							taker-asset-data: right-order-make,
 							margin-per-fill: margin-per-fill,
 							filled: fillable
 							
@@ -818,7 +818,7 @@
 							maker-asset: (get maker-asset right-order),
 							taker-asset: (get taker-asset right-order),
 							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)), 
-							taker-asset-data: (get taker-asset-data right-order),
+							taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)),
 							margin-per-fill: margin-per-fill,
 							filled: (+ (get filled position) fillable)
 						}	
@@ -831,7 +831,7 @@
 							maker-asset: (get maker-asset right-order),
 							taker-asset: (get taker-asset right-order),
 							maker-asset-data: right-order-make, 
-							taker-asset-data: (get taker-asset-data right-order),
+							taker-asset-data: left-order-make,
 							margin-per-fill: margin-per-fill,
 							filled: fillable
 						}
@@ -864,7 +864,7 @@
 						)
 					)
 				)
-				(unwrap! (settle-from-exchange (get maker right-order) (get sender right-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))) (err (* fillable settle-per-fill)))
+				(try! (settle-from-exchange (get maker right-order) (get sender right-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))))
 			)
 		)		
 
