@@ -1036,17 +1036,23 @@ Clarinet.test({
       .expectTuple()
       ['fillable'].expectUint(closed_fill);
 
+    const margin =
+      (left_order_tuple['maker-asset-data'] -
+        left_order_tuple['linked-taker-data']) *
+      closed_fill;
+    const positionPnL =
+      (left_order_2_tuple['taker-asset-data'] -
+        left_order_tuple['maker-asset-data']) *
+      closed_fill;
+    const fee =
+      (left_order_2_tuple['taker-asset-data'] *
+        closed_fill *
+        left_order_2_tuple['sender-fee']) /
+      1e8;
     assertEquals(
       block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {
-        amount: types.uint(
-          (left_order_tuple['maker-asset-data'] -
-            left_order_tuple['linked-taker-data']) *
-            closed_fill -
-            (left_order_tuple['maker-asset-data'] -
-              left_order_2_tuple['taker-asset-data']) *
-              closed_fill,
-        ),
+        amount: types.uint(margin + positionPnL - fee),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(left_order_2_tuple['maker']),
         'sender-id': types.uint(4),
@@ -1056,15 +1062,10 @@ Clarinet.test({
     assertEquals(
       block_2.receipts[0].events[1].contract_event.value.expectTuple(),
       {
-        amount: types.uint(
-          (left_order_2_tuple['taker-asset-data'] *
-            closed_fill *
-            left_order_2_tuple['sender-fee']) /
-            1e8,
-        ),
+        amount: types.uint(fee),
         'asset-id': types.uint(1),
         'recipient-id': types.uint(left_order_2_tuple['sender']),
-        'sender-id': types.uint(left_order_2_tuple['maker']),
+        'sender-id': types.uint(4),
         type: types.ascii('internal_transfer'),
       },
     );
@@ -1358,39 +1359,42 @@ Clarinet.test({
       .expectTuple()
       ['fillable'].expectUint(liquidated_fill);
 
+    const liquidatedMargin =
+      (left_order_tuple['maker-asset-data'] -
+        left_order_tuple['linked-taker-data']) *
+      liquidated_fill;
+    const liquidatedPnL =
+      (liquidation_order_tuple['taker-asset-data'] -
+        left_order_tuple['maker-asset-data']) *
+      liquidated_fill;
+    const liquidatedFee =
+      (liquidation_order_tuple['taker-asset-data'] *
+        liquidated_fill *
+        liquidation_order_tuple['sender-fee']) /
+      1e8;
     // console.log(block_2.receipts[0].events);
-    assertEquals(
-      block_2.receipts[0].events[2].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(
-          (left_order_tuple['maker-asset-data'] -
-            left_order_tuple['linked-taker-data']) *
-            liquidated_fill -
-            (left_order_tuple['maker-asset-data'] -
-              liquidation_order_tuple['taker-asset-data']) *
-              liquidated_fill,
-        ),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(liquidation_order_tuple['maker']),
-        'sender-id': types.uint(4),
-        type: types.ascii('internal_transfer'),
-      },
-    );
-    assertEquals(
-      block_2.receipts[0].events[3].contract_event.value.expectTuple(),
-      {
-        amount: types.uint(
-          (liquidation_order_tuple['taker-asset-data'] *
-            liquidated_fill *
-            liquidation_order_tuple['sender-fee']) /
-            1e8,
-        ),
-        'asset-id': types.uint(1),
-        'recipient-id': types.uint(liquidation_order_tuple['sender']),
-        'sender-id': types.uint(liquidation_order_tuple['maker']),
-        type: types.ascii('internal_transfer'),
-      },
-    );
+    assertEquals(liquidatedMargin, -liquidatedPnL); // no settlement required and no fee to liquidator
+
+    // assertEquals(
+    //   block_2.receipts[0].events[2].contract_event.value.expectTuple(),
+    //   {
+    //     amount: types.uint(liquidatedMargin + liquidatedPnL - liquidatedFee),
+    //     'asset-id': types.uint(1),
+    //     'recipient-id': types.uint(liquidation_order_tuple['maker']),
+    //     'sender-id': types.uint(4),
+    //     type: types.ascii('internal_transfer'),
+    //   },
+    // );
+    // assertEquals(
+    //   block_2.receipts[0].events[3].contract_event.value.expectTuple(),
+    //   {
+    //     amount: types.uint(liquidatedFee),
+    //     'asset-id': types.uint(1),
+    //     'recipient-id': types.uint(liquidation_order_tuple['sender']),
+    //     'sender-id': types.uint(4),
+    //     type: types.ascii('internal_transfer'),
+    //   },
+    // );
     assertEquals(
       block_2.receipts[0].events[0].contract_event.value.expectTuple(),
       {

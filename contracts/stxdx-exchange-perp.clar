@@ -626,7 +626,7 @@
 
 (define-private (settle-to-exchange (maker-id uint) (sender-id uint) (asset-id uint) (amount uint) (fee-amount uint))
 	(begin
-		(as-contract (try! (contract-call? .stxdx-wallet-zero transfer amount maker-id (as-contract (try! (contract-call? .stxdx-registry get-user-id-or-fail tx-sender))) asset-id)))
+		(as-contract (try! (contract-call? .stxdx-wallet-zero transfer amount maker-id (try! (contract-call? .stxdx-registry get-user-id-or-fail tx-sender)) asset-id)))
 		(and
 			(> fee-amount u0)
 			(as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer fee-amount maker-id sender-id asset-id) err-sender-fee-payment-failed))
@@ -636,12 +636,14 @@
 )
 
 (define-private (settle-from-exchange (maker-id uint) (sender-id uint) (asset-id uint) (amount uint) (fee-amount uint))
-	(begin
-		(as-contract (try! (contract-call? .stxdx-wallet-zero transfer amount (as-contract (try! (contract-call? .stxdx-registry get-user-id-or-fail tx-sender))) maker-id asset-id)))
-		(and
-			(> fee-amount u0)
-			(as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer fee-amount maker-id sender-id asset-id) err-sender-fee-payment-failed))
+	(let 
+		(
+			(exchange-id (as-contract (try! (contract-call? .stxdx-registry get-user-id-or-fail tx-sender))))
+			(amount-net-fee (if (<= amount fee-amount) u0 (- amount fee-amount)))
+			(fee (if (<= amount fee-amount) amount fee-amount))
 		)
+		(and (> amount-net-fee u0) (as-contract (try! (contract-call? .stxdx-wallet-zero transfer amount-net-fee exchange-id maker-id asset-id))))
+		(and (> fee u0) (as-contract (unwrap! (contract-call? .stxdx-wallet-zero transfer fee exchange-id sender-id asset-id) err-sender-fee-payment-failed)))
 		(ok true)
 	)
 )
@@ -695,7 +697,7 @@
 				;; linked-hash of parent contains the hash of linked, for validation
 			 	(
 					(asset-id (if left-buy (get maker-asset left-order) (get taker-asset left-order)))
-					(make-per-fill (if left-buy left-order-make right-order-make))
+					(make-per-fill (if left-buy (get maker-asset-data left-order) (get taker-asset-data left-order)))
 					(margin-per-fill (if left-buy (- (get maker-asset-data left-order) (get linked-taker-data left-order)) (- (get linked-maker-data left-order) (get taker-asset-data left-order))))
 					(linked-order
 						{
@@ -762,7 +764,7 @@
 					(linked-order-make (get maker-asset-data linked-order))
 					(linked-order-take (get taker-asset-data linked-order))
 					(asset-id (if left-buy (get maker-asset left-order) (get taker-asset left-order)))
-					(make-per-fill (if left-buy left-order-make right-order-make))
+					(make-per-fill (if left-buy (get maker-asset-data left-order) (get taker-asset-data left-order)))
 					(margin-per-fill (get margin-per-fill linked-order))
 					;; TODO: need to consider default situation
 					(settle-per-fill 
@@ -788,7 +790,7 @@
 				;; linked-hash of parent contains the hash of linked, for validation
 			 	(
 					(asset-id (if right-buy (get maker-asset right-order) (get taker-asset right-order)))
-					(make-per-fill (if right-buy right-order-make left-order-make))
+					(make-per-fill (if right-buy (get maker-asset-data right-order) (get taker-asset-data right-order)))
 					(margin-per-fill (if right-buy (- (get maker-asset-data right-order) (get linked-taker-data right-order)) (- (get linked-maker-data right-order) (get taker-asset-data right-order))))
 					(linked-order
 						{
@@ -854,7 +856,7 @@
 					(linked-order-make (get maker-asset-data linked-order))
 					(linked-order-take (get taker-asset-data linked-order))
 					(asset-id (if right-buy (get maker-asset right-order) (get taker-asset right-order)))
-					(make-per-fill (if right-buy right-order-make left-order-make))
+					(make-per-fill (if right-buy (get maker-asset-data right-order) (get taker-asset-data right-order)))
 					(margin-per-fill (get margin-per-fill linked-order))
 					;; TODO: need to consider default situation
 					(settle-per-fill 
