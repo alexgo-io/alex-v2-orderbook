@@ -32,6 +32,7 @@
 (define-constant err-invalid-limit-price (err u5018))
 (define-constant err-invalid-risk-type (err u5019))
 (define-constant err-invalid-risk-param (err u5020))
+(define-constant err-linked-order-already-closed (err u5021))
 
 ;; 6000-6999: oracle errors
 (define-constant err-untrusted-oracle (err u6000))
@@ -72,7 +73,8 @@
 		maker-asset-data: uint, 
 		taker-asset-data: uint,
 		margin-per-fill: uint,
-		filled: uint
+		filled: uint,
+		closed: uint
 	}
 )
 
@@ -386,8 +388,8 @@
 			(right-order-fill (get order-2 order-fills))
 			;; the linked order can be filled only up to the fill of the initiating order, 
 			;; which may be smaller than maximum-fill of the initiating order, or that of the linked order			
-			(left-linked-filled (match (map-get? positions (get linked-hash left-order)) position (get filled position) MAX_UINT))
-			(right-linked-filled (match (map-get? positions (get linked-hash right-order)) position (get filled position) MAX_UINT))
+			(left-linked-filled (match (map-get? positions (get linked-hash left-order)) position (- (get filled position) (get closed position)) MAX_UINT))
+			(right-linked-filled (match (map-get? positions (get linked-hash right-order)) position (- (get filled position) (get closed position)) MAX_UINT))
 			(fillable (min (- (min left-linked-filled (get maximum-fill left-order)) left-order-fill) (- (min right-linked-filled (get maximum-fill right-order)) right-order-fill)))		
 			(left-buy (is-some (map-get? oracle-symbols (get taker-asset left-order))))
 			(right-buy (not left-buy))
@@ -544,6 +546,7 @@
 				(
 					(linked-order (unwrap! (map-get? positions (get linked-hash left-order)) err-linked-order-not-found))
 				)
+				(asserts! (> (get filled linked-order) (get closed linked-order)) err-linked-order-already-closed)
 				(asserts! (is-eq (get maker left-order) (get maker linked-order)) err-maker-mismatch)
 				(asserts! (is-eq (get maker-asset left-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
 				(asserts! (is-eq (get taker-asset left-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
@@ -589,6 +592,7 @@
 				(
 					(linked-order (unwrap! (map-get? positions (get linked-hash right-order)) err-linked-order-not-found))
 				)
+				(asserts! (> (get filled linked-order) (get closed linked-order)) err-linked-order-already-closed)
 				(asserts! (is-eq (get maker right-order) (get maker linked-order)) err-maker-mismatch)
 				(asserts! (is-eq (get maker-asset right-order) (get taker-asset linked-order)) err-maker-asset-mismatch)
 				(asserts! (is-eq (get taker-asset right-order) (get maker-asset linked-order)) err-taker-asset-mismatch)
@@ -728,15 +732,13 @@
 					(map-set 
 						positions
 						(get left-order-hash validation-data) 
-						{ 
-							maker: (get maker left-order), 
-							maker-asset: (get maker-asset left-order),
-							taker-asset: (get taker-asset left-order),
-							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)), 
-							taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)),
-							margin-per-fill: margin-per-fill,
-							filled: (+ (get filled position) fillable)
-						}	
+						(merge position
+							{ 							
+								maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)), 
+								taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)),
+								filled: (+ (get filled position) fillable),
+							}
+						)	
 					)
 					(map-set 
 						positions
@@ -748,7 +750,8 @@
 							maker-asset-data: left-order-make, 
 							taker-asset-data: right-order-make,
 							margin-per-fill: margin-per-fill,
-							filled: fillable
+							filled: fillable,
+							closed: u0
 							
 						}
 					)
@@ -778,6 +781,15 @@
                              (- margin-per-fill (- linked-order-make right-order-make))
                             )
 						)
+					)
+				)
+				(map-set 
+					positions
+					(get linked-hash left-order)
+					(merge linked-order 
+						{
+							closed: (+ fillable (get closed linked-order))								
+						}
 					)
 				)
 				(try! (settle-from-exchange (get maker left-order) (get sender left-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee left-order) (* fillable make-per-fill))))
@@ -821,15 +833,13 @@
 					(map-set 
 						positions
 						(get right-order-hash validation-data) 
-						{ 
-							maker: (get maker right-order), 
-							maker-asset: (get maker-asset right-order),
-							taker-asset: (get taker-asset right-order),
-							maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)), 
-							taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)),
-							margin-per-fill: margin-per-fill,
-							filled: (+ (get filled position) fillable)
-						}	
+						(merge position 
+							{
+								maker-asset-data: (div-down (+ (* (get filled position) (get maker-asset-data position)) (* fillable right-order-make)) (+ (get filled position) fillable)), 
+								taker-asset-data: (div-down (+ (* (get filled position) (get taker-asset-data position)) (* fillable left-order-make)) (+ (get filled position) fillable)),
+								filled: (+ (get filled position) fillable),
+							}
+						)	
 					)
 					(map-set 
 						positions
@@ -841,7 +851,8 @@
 							maker-asset-data: right-order-make, 
 							taker-asset-data: left-order-make,
 							margin-per-fill: margin-per-fill,
-							filled: fillable
+							filled: fillable,
+							closed: u0
 						}
 					)
 				)				
@@ -872,6 +883,15 @@
 						)
 					)
 				)
+				(map-set 
+					positions
+					(get linked-hash right-order)
+					(merge linked-order
+						{ 						
+							closed: (+ fillable (get closed linked-order))
+						}
+					)
+				)				
 				(try! (settle-from-exchange (get maker right-order) (get sender right-order) asset-id (* fillable settle-per-fill) (mul-down (get sender-fee right-order) (* fillable make-per-fill))))
 			)
 		)		
